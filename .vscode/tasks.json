@@ -12,11 +12,25 @@
     {
       "label": "CADinvent: portable app in Firefox (Windows)",
       "type": "process",
-      "command": "${workspaceFolder}/release/cadinvent-windows-amd64.exe",
+      "command": "${workspaceFolder}/build/releases/cadinvent-windows-amd64.exe",
       "args": ["-browser", "firefox"],
       "isBackground": true,
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "CADinvent: build web application",
+      "type": "shell",
+      "command": "pnpm build",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "CADinvent: build portable application",
+      "type": "shell",
+      "command": "pnpm portable:build",
+      "dependsOn": "CADinvent: build web application",
+      "problemMatcher": []
     },
     {
       "label": "CADinvent: tests",

@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"flag"
 	"fmt"
@@ -24,8 +23,9 @@ import (
 	"time"
 )
 
-//go:embed all:public
-var assets embed.FS
+// The build script generates the embedded asset initializer in build/launcher.
+// Keeping generated assets outside portable/ leaves this directory source-only.
+var assets fs.FS
 
 var version = "dev"
 
@@ -39,6 +39,9 @@ func main() {
 	if *showVersion {
 		fmt.Println("CADinvent", version)
 		return
+	}
+	if assets == nil {
+		log.Fatal("No embedded application. Build with pnpm build and pnpm portable:build from the project root.")
 	}
 	if *port < 1 || *port > 65535 {
 		log.Fatal("Port must be between 1 and 65535.")

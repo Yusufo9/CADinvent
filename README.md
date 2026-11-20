@@ -2,6 +2,8 @@
 
 A browser-local CAD mesh library with horizontal category shelves and interactive 3D inspection.
 
+**Editing the code?** Start with [the Turkish code guide](docs/KOD-REHBERI.md). Edit `src/` for the web UI and `portable/` for the native launcher. All generated outputs live under the ignored `build/` directory; never edit those files directly.
+
 ## Use without installing developer tools
 
 Download the portable package for your computer from this repository's **Releases**, extract it, and run the executable. It opens the app in your existing browser. **No Electron, bundled Chromium, Node.js, Python, or account is needed.** After download, it works entirely offline.
@@ -19,7 +21,7 @@ pnpm install
 pnpm dev
 ```
 
-Open the local URL printed by Vite. `pnpm test` runs the geometry/import/export regression tests. `pnpm build` checks TypeScript and produces the static application in `dist/`. `pnpm preview` serves that build.
+Open the local URL printed by Vite. `pnpm test` runs the geometry/import/export regression tests. `pnpm build` checks TypeScript and produces the static application in `build/web/`. `pnpm preview` serves that build.
 
 In VSCodium, use **Terminal → Run Task → CADinvent: development server**. To run a built Windows portable app in Firefox, choose **CADinvent: portable app in Firefox (Windows)**. Build that executable first with `pnpm build` then `pnpm portable:build` (Go 1.23+ is needed only when building the launcher).
 

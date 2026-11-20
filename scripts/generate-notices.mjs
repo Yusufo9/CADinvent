@@ -24,7 +24,7 @@ const schedulerPkg = JSON.parse(
 );
 notices += `\n${"=".repeat(72)}\nscheduler ${schedulerPkg.version}\n\n${await readFile(join(scheduler, "LICENSE"), "utf8")}\n`;
 notices += `\n${"=".repeat(72)}\nGo standard library (portable launcher)\n\n${await readFile(join(root, "portable", "GO-LICENSE"), "utf8")}\n`;
-await writeFile(join(root, "dist", "THIRD-PARTY-NOTICES.txt"), notices);
+await writeFile(join(root, "build", "web", "THIRD-PARTY-NOTICES.txt"), notices);
 console.log(
-  "Included dependency license notices in dist/THIRD-PARTY-NOTICES.txt",
+  "Included dependency license notices in build/web/THIRD-PARTY-NOTICES.txt",
 );

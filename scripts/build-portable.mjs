@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, readFile, stat } from "node:fs/promises";
+import { access, mkdir, readFile, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import "./prepare-portable.mjs";
 const root = new URL("../", import.meta.url);
@@ -11,12 +11,23 @@ const arch =
   process.env.GOARCH || { x64: "amd64", arm64: "arm64" }[process.arch];
 if (!platform || !arch)
   throw new Error("Unsupported platform; set GOOS and GOARCH explicitly.");
-await mkdir(new URL("release/", root), { recursive: true });
+await mkdir(new URL("build/releases/", root), { recursive: true });
 const file = new URL(
-  `release/cadinvent-${platform}-${arch}${platform === "windows" ? ".exe" : ""}`,
+  `build/releases/cadinvent-${platform}-${arch}${platform === "windows" ? ".exe" : ""}`,
   root,
 );
-const toolchain = process.env.CADINVENT_GO || "go";
+const localToolchain = fileURLToPath(
+  new URL(
+    `build/tools/go/bin/go${process.platform === "win32" ? ".exe" : ""}`,
+    root,
+  ),
+);
+const hasLocalToolchain = await access(localToolchain).then(
+  () => true,
+  () => false,
+);
+const toolchain =
+  process.env.CADINVENT_GO || (hasLocalToolchain ? localToolchain : "go");
 const args = [
   "build",
   "-trimpath",
@@ -27,7 +38,7 @@ const args = [
   ".",
 ];
 const result = spawnSync(toolchain, args, {
-  cwd: fileURLToPath(new URL("portable/", root)),
+  cwd: fileURLToPath(new URL("build/launcher/", root)),
   env: { ...process.env, CGO_ENABLED: "0", GOOS: platform, GOARCH: arch },
   stdio: "inherit",
 });

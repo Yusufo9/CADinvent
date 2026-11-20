@@ -39,23 +39,23 @@ jobs:
       - name: Package releases
         shell: bash
         run: |
-          mkdir -p release/packages
-          cp docs/PORTABLE.md release/START-HERE.md
-          cp dist/THIRD-PARTY-NOTICES.txt release/THIRD-PARTY-NOTICES.txt
-          for executable in release/cadinvent-*; do
+          mkdir -p build/releases/packages
+          cp docs/PORTABLE.md build/releases/START-HERE.md
+          cp build/web/THIRD-PARTY-NOTICES.txt build/releases/THIRD-PARTY-NOTICES.txt
+          for executable in build/releases/cadinvent-*; do
             name="$(basename "$executable")"
             if [[ "$name" == *.exe ]]; then
-              (cd release && zip "packages/${name%.exe}.zip" "$name" START-HERE.md THIRD-PARTY-NOTICES.txt)
+              (cd build/releases && zip "packages/${name%.exe}.zip" "$name" START-HERE.md THIRD-PARTY-NOTICES.txt)
             else
               chmod +x "$executable"
-              tar -czf "release/packages/${name}.tar.gz" -C release "$name" START-HERE.md THIRD-PARTY-NOTICES.txt
+              tar -czf "build/releases/packages/${name}.tar.gz" -C build/releases "$name" START-HERE.md THIRD-PARTY-NOTICES.txt
             fi
           done
-          (cd release/packages && sha256sum *.zip *.tar.gz > SHA256SUMS.txt)
+          (cd build/releases/packages && sha256sum *.zip *.tar.gz > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
           name: cadinvent-portable
-          path: release/packages/*
+          path: build/releases/packages/*
           if-no-files-found: error
           retention-days: 14
   release:

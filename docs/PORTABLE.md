@@ -64,6 +64,6 @@ cd ..
 pnpm portable:build
 ```
 
-The executable appears in `release/`. Build tools and dependencies are never included in the portable package. The Go launcher uses only the standard library. `CADINVENT_GO` may point to a Go executable outside PATH; `GOOS` and `GOARCH` choose a cross-compilation target.
+The executable appears in `build/releases/`. All intermediate outputs stay inside `build/`: web assets in `build/web/`, generated launcher sources/assets in `build/launcher/`, and caches in `build/cache/`. The editable sources remain in `src/` and `portable/`. Build tools and dependencies are never included in the portable package. The Go launcher uses only the standard library. `CADINVENT_GO` may point to a Go executable outside PATH; a local `build/tools/go/` is also detected automatically. `GOOS` and `GOARCH` choose a cross-compilation target.
 
-The frontend's `dist/` output can also be hosted as static files, including under a subdirectory. Hosted and portable editions use the same app, but each origin has independent browser data. No service worker or stale offline cache is involved: portable assets are inside the executable.
+The frontend's `build/web/` output can also be hosted as static files, including under a subdirectory. Hosted and portable editions use the same app, but each origin has independent browser data. No service worker or stale offline cache is involved: portable assets are inside the executable.
