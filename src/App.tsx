@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Box,
   Boxes,
@@ -25,11 +32,9 @@ import type { Library, Part } from "./types";
 import { defaultCategories } from "./types";
 import { deleteFile, loadLibrary, saveFile, saveLibrary } from "./lib/storage";
 import { parseFile } from "./lib/importer";
-import { releaseThumbnailRenderer, thumbnail } from "./lib/rendering";
-import { samples, sampleMesh } from "./lib/samples";
 import { csv, download, manifest } from "./lib/export";
 import CategoryRow from "./components/CategoryRow";
-import Inspector from "./components/Inspector";
+const Inspector = lazy(() => import("./components/Inspector"));
 const empty: Library = { categories: defaultCategories, parts: [] };
 export default function App() {
   const [library, setLibrary] = useState<Library>(empty);
@@ -119,7 +124,12 @@ export default function App() {
     setErrors([]);
     setMenu("");
     let count = 0;
+    let release = () => {};
+    setBusy("Preparing importer…");
     try {
+      const { thumbnail, releaseThumbnailRenderer } =
+        await import("./lib/rendering");
+      release = releaseThumbnailRenderer;
       for (let i = 0; i < list.length; i++) {
         const file = list[i];
         setBusy(`Importing ${i + 1} of ${list.length} · ${file.name}`);
@@ -149,8 +159,13 @@ export default function App() {
         }
         await new Promise((r) => setTimeout(r, 0));
       }
+    } catch (e) {
+      setErrors((previous) => [
+        ...previous,
+        e instanceof Error ? e.message : "Could not load the 3D renderer.",
+      ]);
     } finally {
-      releaseThumbnailRenderer();
+      release();
       setBusy("");
       busyRef.current = false;
       setNotice(`${count} of ${list.length} files imported into Unclassified.`);
@@ -161,7 +176,11 @@ export default function App() {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy("Building sample library…");
+    let release = () => {};
     try {
+      const [{ samples, sampleMesh }, { thumbnail, releaseThumbnailRenderer }] =
+        await Promise.all([import("./lib/samples"), import("./lib/rendering")]);
+      release = releaseThumbnailRenderer;
       const parts: Part[] = [];
       for (const [name, categoryId, key] of samples) {
         if (library.parts.some((p) => p.demo === key)) continue;
@@ -191,7 +210,7 @@ export default function App() {
         e instanceof Error ? e.message : "Unable to generate previews.",
       ]);
     } finally {
-      releaseThumbnailRenderer();
+      release();
       busyRef.current = false;
       setBusy("");
     }
@@ -722,12 +741,20 @@ export default function App() {
         </div>
       )}
       {activePart && (
-        <Inspector
-          part={activePart}
-          categories={library.categories}
-          onClose={closeInspector}
-          onMove={(category) => move([activePart.id], category)}
-        />
+        <Suspense
+          fallback={
+            <div className="modal-backdrop" role="status">
+              <LoaderCircle className="spin" /> Loading inspector…
+            </div>
+          }
+        >
+          <Inspector
+            part={activePart}
+            categories={library.categories}
+            onClose={closeInspector}
+            onMove={(category) => move([activePart.id], category)}
+          />
+        </Suspense>
       )}
       {newCategory && (
         <div

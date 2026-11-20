@@ -8,8 +8,12 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 .idea/
+.local-tools/
+release/
+portable/public/
 # Local assistant tooling must never be published with application sources.
 .openai/
 .codex/

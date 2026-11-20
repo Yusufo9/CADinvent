@@ -1,0 +1,77 @@
+name: Test and build portable apps
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+          cache: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm portable:prepare
+      - run: go test ./...
+        working-directory: portable
+      - name: Build self-contained executables
+        shell: bash
+        run: |
+          for target in windows/amd64 windows/arm64 linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            GOOS="${target%/*}" GOARCH="${target#*/}" node scripts/build-portable.mjs
+          done
+      - name: Package releases
+        shell: bash
+        run: |
+          mkdir -p release/packages
+          cp docs/PORTABLE.md release/START-HERE.md
+          cp dist/THIRD-PARTY-NOTICES.txt release/THIRD-PARTY-NOTICES.txt
+          for executable in release/cadinvent-*; do
+            name="$(basename "$executable")"
+            if [[ "$name" == *.exe ]]; then
+              (cd release && zip "packages/${name%.exe}.zip" "$name" START-HERE.md THIRD-PARTY-NOTICES.txt)
+            else
+              chmod +x "$executable"
+              tar -czf "release/packages/${name}.tar.gz" -C release "$name" START-HERE.md THIRD-PARTY-NOTICES.txt
+            fi
+          done
+          (cd release/packages && sha256sum *.zip *.tar.gz > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cadinvent-portable
+          path: release/packages/*
+          if-no-files-found: error
+          retention-days: 14
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: cadinvent-portable
+          path: packages
+      - name: Prepare draft release for review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" packages/* --verify-tag --draft --title "CADinvent $RELEASE_TAG" --notes-file docs/RELEASE-NOTES.md
