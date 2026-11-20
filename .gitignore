@@ -1,6 +1,21 @@
 node_modules/
 dist/
-.sites-runtime/
 *.tsbuildinfo
 *.zip
 .env*
+!.env.example
+coverage/
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+# Local assistant tooling must never be published with application sources.
+.openai/
+.codex/
+.agents/
+.claude/
+.cursor/
+.sites-runtime/
+AGENTS.md
+CLAUDE.md
