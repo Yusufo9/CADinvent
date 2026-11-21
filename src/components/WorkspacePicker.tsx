@@ -107,18 +107,20 @@ export default function WorkspacePicker({
                   </span>
                   {w.id === workspace.id && <Check size={15} />}
                 </button>
-                <button
-                  className="icon-button workspace-delete"
-                  role="menuitem"
-                  aria-label={`Delete workspace ${w.name}`}
-                  title={`Delete ${w.name}`}
-                  onClick={() => {
-                    setOpen(false);
-                    onDelete(w);
-                  }}
-                >
-                  <Trash2 size={15} />
-                </button>
+                {workspaces.length > 1 && (
+                  <button
+                    className="icon-button workspace-delete"
+                    role="menuitem"
+                    aria-label={`Delete workspace ${w.name}`}
+                    title={`Delete ${w.name}`}
+                    onClick={() => {
+                      setOpen(false);
+                      onDelete(w);
+                    }}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
               </div>
             ))}
           </div>

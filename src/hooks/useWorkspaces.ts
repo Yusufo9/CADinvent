@@ -126,7 +126,7 @@ export function useWorkspaces(onError: (message: string) => void) {
     await writes.current;
     const current = latest.current;
     const removed = current.workspaces.find((w) => w.id === id);
-    if (!removed) return;
+    if (!removed || current.workspaces.length <= 1) return;
     const next = removeWorkspace(current, id);
     await saveWorkspaceRemoval(
       next,

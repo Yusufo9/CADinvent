@@ -25,6 +25,7 @@ interface Props {
   onSelect: (id: string) => void;
   onFavorite: (id: string) => void;
   onMove: (ids: string[], category: string) => void;
+  hideHeading?: boolean;
 }
 export default function CategoryRow({
   category,
@@ -40,6 +41,7 @@ export default function CategoryRow({
   onSelect,
   onFavorite,
   onMove,
+  hideHeading = false,
 }: Props) {
   const row = useRef<HTMLDivElement>(null);
   const [renaming, setRenaming] = useState(false);
@@ -95,112 +97,123 @@ export default function CategoryRow({
         }
       }}
     >
-      <div className="category-heading">
-        <button
-          className="category-toggle"
-          onClick={onToggle}
-          aria-expanded={!category.collapsed}
-          aria-label={`${category.collapsed ? "Expand" : "Collapse"} ${category.name}`}
-        >
-          {category.collapsed ? (
-            <ChevronRight size={18} />
-          ) : (
-            <ChevronDown size={18} />
-          )}
-          <span
-            className="category-dot"
-            style={{ background: category.color }}
-          />
-        </button>
-        {renaming ? (
-          <input
-            className="rename-input"
-            value={name}
-            autoFocus
-            maxLength={60}
-            aria-label="Category name"
-            onChange={(e) => setName(e.target.value)}
-            onBlur={rename}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") rename();
-              if (e.key === "Escape") {
-                setName(category.name);
-                setRenaming(false);
-              }
-            }}
-          />
-        ) : (
-          <button className="category-name" onClick={onToggle}>
-            {category.name}
-          </button>
-        )}
-        <span className="count">{parts.length}</span>
-        <button
-          className="icon-button subtle"
-          aria-label={`Rename ${category.name}`}
-          onClick={() => setRenaming(true)}
-        >
-          <Pencil size={14} />
-        </button>
-        <div className="category-actions">
+      {!hideHeading && (
+        <div className="category-heading">
           <button
-            className={`icon-button category-favorite ${category.favorite ? "is-favorite" : ""}`}
-            aria-label={`${category.favorite ? "Unfavorite" : "Favorite"} ${category.name} category`}
-            aria-pressed={!!category.favorite}
-            title="Favorite category"
-            onClick={onCategoryFavorite}
+            className="category-toggle"
+            onClick={onToggle}
+            aria-expanded={!category.collapsed}
+            aria-label={`${category.collapsed ? "Expand" : "Collapse"} ${category.name}`}
           >
-            <Star
-              size={15}
-              fill={category.favorite ? "currentColor" : "none"}
+            {category.collapsed ? (
+              <ChevronRight size={18} />
+            ) : (
+              <ChevronDown size={18} />
+            )}
+            <span
+              className="category-dot"
+              style={{ background: category.color }}
             />
           </button>
-          <button
-            className={`icon-button category-include ${includedInAll(category) ? "is-included" : ""}`}
-            aria-label={`${includedInAll(category) ? "Exclude" : "Include"} ${category.name} ${includedInAll(category) ? "from" : "in"} All Parts`}
-            aria-pressed={includedInAll(category)}
-            title={
-              includedInAll(category)
-                ? "Exclude from All Parts"
-                : "Include in All Parts"
-            }
-            onClick={onInclude}
-          >
-            <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>
-              ±
+          {renaming ? (
+            <input
+              className="rename-input"
+              value={name}
+              autoFocus
+              maxLength={60}
+              aria-label="Category name"
+              onChange={(e) => setName(e.target.value)}
+              onBlur={rename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") rename();
+                if (e.key === "Escape") {
+                  setName(category.name);
+                  setRenaming(false);
+                }
+              }}
+            />
+          ) : (
+            <button className="category-name" onClick={onToggle}>
+              {category.name}
+            </button>
+          )}
+          <span className="count">{parts.length}</span>
+          {category.id !== "unclassified" && (
+            <button
+              className="icon-button subtle"
+              aria-label={`Rename ${category.name}`}
+              onClick={() => setRenaming(true)}
+            >
+              <Pencil size={14} />
+            </button>
+          )}
+          <div className="category-actions">
+            <button
+              className={`icon-button category-favorite ${category.favorite ? "is-favorite" : ""}`}
+              aria-label={`${category.favorite ? "Unfavorite" : "Favorite"} ${category.name} category`}
+              aria-pressed={!!category.favorite}
+              title="Favorite category"
+              onClick={onCategoryFavorite}
+            >
+              <Star
+                size={15}
+                fill={category.favorite ? "currentColor" : "none"}
+              />
+            </button>
+            {category.id !== "unclassified" && (
+              <button
+                className={`icon-button category-include ${includedInAll(category) ? "is-included" : ""}`}
+                aria-label={`${includedInAll(category) ? "Exclude" : "Include"} ${category.name} ${includedInAll(category) ? "from" : "in"} All Parts`}
+                aria-pressed={includedInAll(category)}
+                title={
+                  includedInAll(category)
+                    ? "Exclude from All Parts"
+                    : "Include in All Parts"
+                }
+                onClick={onInclude}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{ fontSize: 20, lineHeight: 1 }}
+                >
+                  ±
+                </span>
+              </button>
+            )}
+            {category.id !== "unclassified" && (
+              <button
+                className="icon-button category-delete"
+                title="Delete category"
+                aria-label={`Delete ${category.name} category`}
+                onClick={onDelete}
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+            <span className="row-hint">
+              {parts.length > 0 ? "SCROLL TO EXPLORE" : "READY FOR PARTS"}
             </span>
-          </button>
-          <button
-            className="icon-button category-delete"
-            title="Delete category"
-            aria-label={`Delete ${category.name} category`}
-            onClick={onDelete}
-          >
-            <Trash2 size={14} />
-          </button>
-          <span className="row-hint">
-            {parts.length > 0 ? "SCROLL TO EXPLORE" : "READY FOR PARTS"}
-          </span>
-          <button
-            className="icon-button"
-            aria-label={`Scroll ${category.name} left`}
-            onClick={() =>
-              row.current?.scrollBy({ left: -460, behavior: "smooth" })
-            }
-          >
-            <ChevronRight className="flip" size={16} />
-          </button>
-          <button
-            className="icon-button"
-            aria-label={`Scroll ${category.name} right`}
-            onClick={() =>
-              row.current?.scrollBy({ left: 460, behavior: "smooth" })
-            }
-          >
-            <ChevronRight size={16} />
-          </button>
+            <button
+              className="icon-button"
+              aria-label={`Scroll ${category.name} left`}
+              onClick={() =>
+                row.current?.scrollBy({ left: -460, behavior: "smooth" })
+              }
+            >
+              <ChevronRight className="flip" size={16} />
+            </button>
+            <button
+              className="icon-button"
+              aria-label={`Scroll ${category.name} right`}
+              onClick={() =>
+                row.current?.scrollBy({ left: 460, behavior: "smooth" })
+              }
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
       {!category.collapsed && (
         <div className="part-row" ref={row}>
           {parts.map((p) => (
@@ -272,7 +285,7 @@ export default function CategoryRow({
               </select>
             </article>
           ))}
-          {!parts.length && (
+          {!parts.length && !hideHeading && (
             <div className="empty-row">
               <Box size={25} />
               <div>

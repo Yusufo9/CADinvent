@@ -1,4 +1,4 @@
-import type { Part, Workspace } from "../types";
+import { defaultCategories, type Part, type Workspace } from "../types";
 import {
   checksum,
   MAX_BACKUP_BYTES,
@@ -129,7 +129,9 @@ export async function readBackup(
     id: crypto.randomUUID(),
     name: manifest.workspace.name,
     createdAt: manifest.workspace.createdAt,
-    categories: manifest.categories,
+    categories: manifest.categories.some((c) => c.id === "unclassified")
+      ? manifest.categories
+      : [...manifest.categories, { ...defaultCategories[0] }],
     parts: [],
   };
   const sources = new Map<string, File>();

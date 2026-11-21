@@ -1,5 +1,5 @@
 import { openDB } from "idb";
-import type { Library, WorkspaceState } from "../types";
+import { defaultCategories, type Library, type WorkspaceState } from "../types";
 import { createWorkspace } from "./workspaces";
 const db = openDB("cadinvent", 1, {
   upgrade(db) {
@@ -13,7 +13,16 @@ export async function loadWorkspaceState(): Promise<WorkspaceState> {
     WorkspaceState | undefined;
   if (saved) {
     await tx.done;
-    return saved;
+    const repaired = {
+      ...saved,
+      workspaces: saved.workspaces.map((w) => ({
+        ...w,
+        categories: w.categories.some((c) => c.id === "unclassified")
+          ? w.categories
+          : [...w.categories, { ...defaultCategories[0] }],
+      })),
+    };
+    return repaired;
   }
   const legacy = (await tx.store.get("current")) as Library | undefined;
   const first = { ...createWorkspace("Personal workspace 1"), ...legacy };

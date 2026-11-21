@@ -34,6 +34,13 @@ beforeEach(async () => {
   db.close();
 });
 describe("multiple workspace persistence", () => {
+  it("starts each new workspace with only mandatory Unclassified", () => {
+    const workspace = createWorkspace("New");
+    expect(workspace.categories.map((category) => category.id)).toEqual([
+      "unclassified",
+    ]);
+    expect(workspace.parts).toEqual([]);
+  });
   it("migrates the old library and keeps file references without duplicating it on reload", async () => {
     const db = await openDB("cadinvent", 1);
     await db.put(
@@ -123,7 +130,7 @@ describe("multiple workspace persistence", () => {
     expect(loaded.activeWorkspaceId).toBe(b.id);
     expect(loaded.workspaces.map((w) => w.id)).toEqual([b.id]);
   });
-  it("keeps the active project when deleting another and replaces the last with an empty workspace", () => {
+  it("keeps the active project and prevents deletion of the sole workspace", () => {
     const a = createWorkspace("A"),
       b = createWorkspace("B");
     const next = removeWorkspace(
@@ -131,10 +138,6 @@ describe("multiple workspace persistence", () => {
       b.id,
     );
     expect(next.activeWorkspaceId).toBe(a.id);
-    const empty = removeWorkspace(next, a.id);
-    expect(empty.workspaces).toHaveLength(1);
-    expect(empty.workspaces[0].name).toBe("Personal workspace 1");
-    expect(empty.workspaces[0].parts).toEqual([]);
-    expect(empty.activeWorkspaceId).not.toBe(a.id);
+    expect(removeWorkspace(next, a.id)).toBe(next);
   });
 });

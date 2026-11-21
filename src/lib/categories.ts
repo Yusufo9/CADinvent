@@ -6,7 +6,7 @@ import {
 } from "../types";
 
 export function includedInAll(category: Category) {
-  return category.includedInAll ?? category.id !== "unclassified";
+  return category.id !== "unclassified" && (category.includedInAll ?? true);
 }
 
 export function matchesView(part: Part, category: Category, view: string) {
@@ -34,6 +34,7 @@ export function removeCategory(
   id: string,
   destination: Category,
 ): Library {
+  if (id === "unclassified") return library;
   const categories = library.categories.filter((c) => c.id !== id);
   const affected = library.parts.some((p) => p.categoryId === id);
   if (affected && !categories.some((c) => c.id === destination.id))

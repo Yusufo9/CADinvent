@@ -28,13 +28,13 @@ In VSCodium, use **Terminal → Run Task → CADinvent: development server**. To
 ## MVP
 
 - Batch STL (ASCII/binary), OBJ, and PLY import through Add models and the file drop zone.
-- Independent personal workspaces: create, rename, switch, and delete from the navbar. Deletion requires confirmation; deleting the last workspace creates an empty replacement.
+- Independent personal workspaces: create, rename, switch, and delete from the navbar. Deletion is available when at least two workspaces exist and requires confirmation. New workspaces start with Unclassified only.
 - Editable, collapsible categories with square cards in horizontally scrolling shelves.
 - Drag parts between categories, use a card selector, or select several cards and move them together.
 - Search by filename/category, filter by format, sort, and favorite parts.
 - Click a part for orbit, pan, zoom, camera reset, solid/wireframe, dimensions, and source download.
 - Export Workspace downloads one ZIP containing root `workspace.json` and individual source files under `models/`. Import Workspace accepts that ZIP and restores a new independent workspace, including category settings and part favorites.
-- Category stars include their contents in Favorites without changing individual part stars. The icon-only ± button controls inclusion in All Parts; Unclassified starts excluded. Categories shows every shelf, including excluded ones.
+- Category stars include their contents in Favorites without changing individual part stars. The icon-only ± button controls inclusion of custom categories in All Parts. Unclassified has its own tab and stays excluded. Categories shows every shelf, including excluded ones, and contains Add models.
 - Files, thumbnails, categories, and favorites persist in IndexedDB on the current browser origin. Clearing site data removes the library; localhost and the hosted site have independent libraries.
 - Folder import, sample-library creation, and separate JSON/CSV exports have been removed. Previously saved sample parts remain readable for compatibility.
 
@@ -63,7 +63,7 @@ This is a mesh viewer, not a solid-model CAD editor. STEP/IGES, BREP, native CAD
 
 Thumbnails are lazy decoded, but all workspace metadata/thumbnails remain in React memory and cards are not virtualized. Browser storage quotas and device GPU limits still apply. Importing a duplicate file creates another part. ZIP backups are limited to 256 MiB of source models, 80 MiB per model, 5,000 parts, and 1,000 categories. Packing/unpacking holds archive data in memory; this is not a streaming format implementation.
 
-Any category, including Unclassified, can be deleted after confirmation. Its parts move to Unclassified when available, otherwise another category; if no category remains, a Recovered parts shelf is created for those models. Empty categories can all be removed. Adding raw models recreates Unclassified when necessary. Removing selected parts or deleting a workspace removes browser-local source copies, never original disk files.
+Custom categories can be deleted after confirmation; their parts move to the mandatory Unclassified category. Removing selected parts or deleting a workspace removes browser-local source copies, never original disk files.
 
 ## Next steps
 

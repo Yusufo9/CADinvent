@@ -43,10 +43,12 @@ export function removeWorkspace(
   state: WorkspaceState,
   id: string,
 ): WorkspaceState {
-  if (!state.workspaces.some((w) => w.id === id)) return state;
+  if (
+    state.workspaces.length <= 1 ||
+    !state.workspaces.some((w) => w.id === id)
+  )
+    return state;
   const workspaces = state.workspaces.filter((w) => w.id !== id);
-  if (!workspaces.length)
-    workspaces.push(createWorkspace("Personal workspace 1"));
   return {
     workspaces,
     activeWorkspaceId:

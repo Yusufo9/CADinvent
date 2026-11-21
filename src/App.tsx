@@ -8,6 +8,7 @@ import {
 } from "react";
 import {
   Box,
+  ChevronDown,
   Boxes,
   Upload,
   Download,
@@ -85,6 +86,23 @@ export default function App() {
   const [newCategory, setNewCategory] = useState(false);
   const [categoryName, setCategoryName] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [exportMenu, setExportMenu] = useState(false);
+  const exportMenuRoot = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const close = (event: PointerEvent) => {
+      if (!exportMenuRoot.current?.contains(event.target as Node))
+        setExportMenu(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExportMenu(false);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", escape);
+    };
+  }, []);
   const files = useRef<HTMLInputElement>(null),
     workspaceFiles = useRef<HTMLInputElement>(null),
     search = useRef<HTMLInputElement>(null);
@@ -120,6 +138,7 @@ export default function App() {
   async function exportWorkspace() {
     if (busyRef.current || !ready) return;
     busyRef.current = true;
+    setExportMenu(false);
     setErrors([]);
     setBusy("Preparing workspace backup…");
     try {
@@ -163,7 +182,7 @@ export default function App() {
     }
   }
   async function confirmWorkspaceDelete() {
-    if (!deletingWorkspace || busyRef.current) return;
+    if (!deletingWorkspace || busyRef.current || workspaces.length <= 1) return;
     const target = deletingWorkspace;
     setDeletingWorkspace(undefined);
     busyRef.current = true;
@@ -183,7 +202,8 @@ export default function App() {
     }
   }
   function confirmCategoryDelete() {
-    if (!deletingCategory) return;
+    if (!deletingCategory || deletingCategory.category.id === "unclassified")
+      return;
     const { category, destination } = deletingCategory;
     setLibrary((l) => removeCategory(l, category.id, destination));
     setDeletingCategory(undefined);
@@ -364,13 +384,24 @@ export default function App() {
           <span className="local-badge">
             <span /> Local library
           </span>
-          <button
-            className="button nav-action"
-            disabled={!!busy || !ready}
-            onClick={exportWorkspace}
-          >
-            <Download size={16} /> Export Workspace
-          </button>
+          <div className="menu-wrap" ref={exportMenuRoot}>
+            <button
+              className="button nav-action"
+              disabled={!!busy || !ready}
+              aria-expanded={exportMenu}
+              aria-haspopup="menu"
+              onClick={() => setExportMenu((open) => !open)}
+            >
+              <Download size={16} /> Export <ChevronDown size={13} />
+            </button>
+            {exportMenu && (
+              <div className="dropdown" role="menu" aria-label="Export options">
+                <button role="menuitem" onClick={exportWorkspace}>
+                  <Download size={16} /> Export Workspace
+                </button>
+              </div>
+            )}
+          </div>
           <button
             className="button nav-action"
             disabled={!!busy || !ready}
@@ -458,12 +489,6 @@ export default function App() {
               <Layers3 size={16} /> All parts <span>{allPartsCount}</span>
             </button>
             <button
-              className={tab === "favorites" ? "active" : ""}
-              onClick={() => setTab("favorites")}
-            >
-              <Star size={16} /> Favorites
-            </button>
-            <button
               className={tab === "categories" ? "active" : ""}
               onClick={() => setTab("categories")}
             >
@@ -481,10 +506,21 @@ export default function App() {
                 }
               </span>
             </button>
+            <button
+              className={tab === "favorites" ? "active" : ""}
+              onClick={() => setTab("favorites")}
+            >
+              <Star size={16} /> Favorites
+            </button>
           </div>
-          <button className="text-button" onClick={() => setNewCategory(true)}>
-            <Plus size={16} /> New category
-          </button>
+          {tab === "categories" && (
+            <button
+              className="text-button"
+              onClick={() => setNewCategory(true)}
+            >
+              <Plus size={16} /> New category
+            </button>
+          )}
         </div>
         <div className="filter-bar">
           <div className="search-field">
@@ -592,145 +628,128 @@ export default function App() {
           </div>
         ) : (
           <>
-            {!library.parts.length && (
-              <div className="welcome-panel">
-                <span className="welcome-icon">
-                  <Boxes size={33} />
-                </span>
-                <div>
-                  <h2>Your next project starts with a part.</h2>
-                  <p>
-                    Add STL, OBJ, or PLY models below, or restore a workspace
-                    ZIP.
-                  </p>
-                </div>
+            {categories.length === 0
+              ? tab !== "unclassified" && (
+                  <div className="no-results">
+                    <h2>
+                      {tab === "all"
+                        ? "No parts in All Parts"
+                        : tab === "favorites"
+                          ? "No favorites yet"
+                          : "No matching categories"}
+                    </h2>
+                    <p>
+                      {tab === "all"
+                        ? "Include a category with its ± button in Categories."
+                        : tab === "favorites"
+                          ? "Star a part or category to see it here."
+                          : "Create a category to organize your models."}
+                    </p>
+                  </div>
+                )
+              : categories.map((c) => (
+                  <CategoryRow
+                    key={c.id}
+                    hideHeading={tab === "unclassified"}
+                    category={c}
+                    categories={library.categories}
+                    parts={shown.filter((p) => p.categoryId === c.id)}
+                    selected={selected}
+                    onToggle={() =>
+                      setLibrary((l) => ({
+                        ...l,
+                        categories: l.categories.map((x) =>
+                          x.id === c.id ? { ...x, collapsed: !x.collapsed } : x,
+                        ),
+                      }))
+                    }
+                    onRename={(name) =>
+                      setLibrary((l) => ({
+                        ...l,
+                        categories: l.categories.map((x) =>
+                          x.id === c.id ? { ...x, name } : x,
+                        ),
+                      }))
+                    }
+                    onDelete={() =>
+                      setDeletingCategory({
+                        category: c,
+                        destination: deletionDestination(library, c.id),
+                      })
+                    }
+                    onInclude={() =>
+                      updateCategory(c.id, (category) => ({
+                        ...category,
+                        includedInAll: !includedInAll(category),
+                      }))
+                    }
+                    onCategoryFavorite={() =>
+                      updateCategory(c.id, (category) => ({
+                        ...category,
+                        favorite: !category.favorite,
+                      }))
+                    }
+                    onInspect={(p) => setActive(p.id)}
+                    onSelect={(id) =>
+                      setSelected((current) => {
+                        const next = new Set(current);
+                        if (next.has(id)) next.delete(id);
+                        else next.add(id);
+                        return next;
+                      })
+                    }
+                    onFavorite={(id) =>
+                      setLibrary((l) => ({
+                        ...l,
+                        parts: l.parts.map((p) =>
+                          p.id === id ? { ...p, favorite: !p.favorite } : p,
+                        ),
+                      }))
+                    }
+                    onMove={move}
+                  />
+                ))}
+          </>
+        )}
+        {tab === "categories" && (
+          <div
+            className={`import-zone ${dragging ? "drag-over" : ""}`}
+            onDragOver={(e) => {
+              if (e.dataTransfer.types.includes("Files")) {
+                e.preventDefault();
+                setDragging(true);
+              }
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              void importFiles(Array.from(e.dataTransfer.files));
+            }}
+          >
+            <div className="import-zone-icon">
+              <Upload size={21} />
+            </div>
+            <div>
+              <b>Make room for your next idea.</b>
+              <p>
+                Drop CAD files here, or{" "}
                 <button
-                  className="button"
                   disabled={!!busy}
                   onClick={() => files.current?.click()}
                 >
                   Add models
                 </button>
-              </div>
-            )}
-            {categories.length === 0 ? (
-              <div className="no-results">
-                <Search size={28} />
-                <h2>No matching categories</h2>
-                <p>
-                  Open Categories to manage all shelves and choose which appear
-                  in All Parts.
-                </p>
-                <button
-                  className="button"
-                  onClick={() => {
-                    setQuery("");
-                    setFormat("all");
-                    setTab("categories");
-                  }}
-                >
-                  Show categories
-                </button>
-              </div>
-            ) : (
-              categories.map((c) => (
-                <CategoryRow
-                  key={c.id}
-                  category={c}
-                  categories={library.categories}
-                  parts={shown.filter((p) => p.categoryId === c.id)}
-                  selected={selected}
-                  onToggle={() =>
-                    setLibrary((l) => ({
-                      ...l,
-                      categories: l.categories.map((x) =>
-                        x.id === c.id ? { ...x, collapsed: !x.collapsed } : x,
-                      ),
-                    }))
-                  }
-                  onRename={(name) =>
-                    setLibrary((l) => ({
-                      ...l,
-                      categories: l.categories.map((x) =>
-                        x.id === c.id ? { ...x, name } : x,
-                      ),
-                    }))
-                  }
-                  onDelete={() =>
-                    setDeletingCategory({
-                      category: c,
-                      destination: deletionDestination(library, c.id),
-                    })
-                  }
-                  onInclude={() =>
-                    updateCategory(c.id, (category) => ({
-                      ...category,
-                      includedInAll: !includedInAll(category),
-                    }))
-                  }
-                  onCategoryFavorite={() =>
-                    updateCategory(c.id, (category) => ({
-                      ...category,
-                      favorite: !category.favorite,
-                    }))
-                  }
-                  onInspect={(p) => setActive(p.id)}
-                  onSelect={(id) =>
-                    setSelected((current) => {
-                      const next = new Set(current);
-                      if (next.has(id)) next.delete(id);
-                      else next.add(id);
-                      return next;
-                    })
-                  }
-                  onFavorite={(id) =>
-                    setLibrary((l) => ({
-                      ...l,
-                      parts: l.parts.map((p) =>
-                        p.id === id ? { ...p, favorite: !p.favorite } : p,
-                      ),
-                    }))
-                  }
-                  onMove={move}
-                />
-              ))
-            )}
-          </>
+              </p>
+            </div>
+            <div className="format-tags">
+              <span>STL</span>
+              <span>OBJ</span>
+              <span>PLY</span>
+              <small>80 MB per file</small>
+            </div>
+          </div>
         )}
-        <div
-          className={`import-zone ${dragging ? "drag-over" : ""}`}
-          onDragOver={(e) => {
-            if (e.dataTransfer.types.includes("Files")) {
-              e.preventDefault();
-              setDragging(true);
-            }
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            void importFiles(Array.from(e.dataTransfer.files));
-          }}
-        >
-          <div className="import-zone-icon">
-            <Upload size={21} />
-          </div>
-          <div>
-            <b>Make room for your next idea.</b>
-            <p>
-              Drop CAD files here, or{" "}
-              <button disabled={!!busy} onClick={() => files.current?.click()}>
-                Add models
-              </button>
-            </p>
-          </div>
-          <div className="format-tags">
-            <span>STL</span>
-            <span>OBJ</span>
-            <span>PLY</span>
-            <small>80 MB per file</small>
-          </div>
-        </div>
       </main>
       <footer>
         <span>

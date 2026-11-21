@@ -39,10 +39,6 @@ export interface MeshData {
   triangles: number;
 }
 export const defaultCategories: Category[] = [
-  { id: "brackets", name: "Brackets", color: "#b4dc90" },
-  { id: "hubs", name: "Hubs & couplings", color: "#a5b7e6" },
-  { id: "mounts", name: "Mounts", color: "#e0b78d" },
-  { id: "enclosures", name: "Enclosures", color: "#c4a3d8" },
   {
     id: "unclassified",
     name: "Unclassified",

@@ -22,7 +22,10 @@ async function fixture() {
     backupId: "backup-a",
     exportedAt: "2026-11-20T00:00:00Z",
     workspace: { name: "Çizim projesi", createdAt: "2026-11-20T00:00:00Z" },
-    categories: defaultCategories.map((c) => ({
+    categories: [
+      ...defaultCategories,
+      { id: "brackets", name: "Brackets", color: "#b4dc90" },
+    ].map((c) => ({
       ...c,
       collapsed: c.id === "brackets",
       favorite: c.id === "brackets",
@@ -66,9 +69,15 @@ describe("workspace backup", () => {
     const data = await verifyArchive(restored);
     expect(data.workspace.name).toBe("Çizim projesi");
     expect(data.parts[0].favorite).toBe(true);
-    expect(data.categories[0].collapsed).toBe(true);
-    expect(data.categories[0].favorite).toBe(true);
-    expect(data.categories[0].includedInAll).toBe(false);
+    expect(data.categories.find((c) => c.id === "brackets")?.collapsed).toBe(
+      true,
+    );
+    expect(data.categories.find((c) => c.id === "brackets")?.favorite).toBe(
+      true,
+    );
+    expect(
+      data.categories.find((c) => c.id === "brackets")?.includedInAll,
+    ).toBe(false);
     expect(Object.keys(restored).sort()).toEqual([
       "models/",
       "models/0.obj",

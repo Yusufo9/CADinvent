@@ -21,14 +21,14 @@ const part: Part = {
   favorite: true,
 };
 describe("category views and deletion", () => {
-  it("excludes Unclassified by default and lets explicit inclusion override the default", () => {
+  it("always excludes mandatory Unclassified from All Parts", () => {
     const category = createWorkspace("A").categories.find(
       (c) => c.id === "unclassified",
     )!;
     expect(includedInAll(category)).toBe(false);
     expect(matchesView(part, category, "all")).toBe(false);
     expect(matchesView(part, { ...category, includedInAll: true }, "all")).toBe(
-      true,
+      false,
     );
     expect(matchesView(part, category, "categories")).toBe(true);
   });
@@ -50,26 +50,24 @@ describe("category views and deletion", () => {
     ).toBe(true);
     expect(normal.favorite).toBe(false);
   });
-  it("deletes Unclassified without orphaning parts or losing favorites", () => {
+  it("keeps Unclassified and its parts when deletion is attempted", () => {
     const library = { ...createWorkspace("A"), parts: [part] };
     const destination = deletionDestination(library, "unclassified");
     const next = removeCategory(library, "unclassified", destination);
-    expect(next.categories.some((c) => c.id === "unclassified")).toBe(false);
-    expect(next.parts[0]).toEqual({ ...part, categoryId: destination.id });
+    expect(next).toBe(library);
   });
-  it("keeps models when deleting the last populated category and permits deleting the last empty category", () => {
+  it("moves parts from a deleted custom category into Unclassified", () => {
     const library = {
-      categories: [createWorkspace("A").categories.at(-1)!],
-      parts: [part],
+      categories: [
+        ...createWorkspace("A").categories,
+        { id: "custom", name: "Custom", color: "#aaaaaa" },
+      ],
+      parts: [{ ...part, categoryId: "custom" }],
     };
-    const destination = deletionDestination(library, "unclassified");
-    const next = removeCategory(library, "unclassified", destination);
-    expect(next.categories[0].name).toBe("Recovered parts");
-    expect(next.parts[0].categoryId).toBe(next.categories[0].id);
-    expect(
-      removeCategory({ ...library, parts: [] }, "unclassified", destination)
-        .categories,
-    ).toEqual([]);
+    const destination = deletionDestination(library, "custom");
+    const next = removeCategory(library, "custom", destination);
+    expect(next.categories.map((c) => c.id)).toEqual(["unclassified"]);
+    expect(next.parts[0].categoryId).toBe("unclassified");
   });
   it("recreates an excluded intake category only when adding a raw model", () => {
     const next = addImportedPart({ categories: [], parts: [] }, part);
