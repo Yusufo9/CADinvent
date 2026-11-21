@@ -2,7 +2,7 @@
 
 A browser-local CAD mesh library with horizontal category shelves and interactive 3D inspection.
 
-**Editing the code?** Start with [the Turkish code guide](docs/KOD-REHBERI.md). Edit `src/` for the web UI and `portable/` for the native launcher. All generated outputs live under the ignored `build/` directory; never edit those files directly.
+**Editing the code?** Start with the [step-by-step Turkish guides](rehberler/README.md) or the [short code guide](docs/KOD-REHBERI.md). Edit `src/` for the web UI and `portable/` for the native launcher. All generated outputs live under the ignored `build/` directory; never edit those files directly.
 
 ## Use without installing developer tools
 
