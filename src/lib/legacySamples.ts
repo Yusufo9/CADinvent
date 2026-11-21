@@ -1,3 +1,4 @@
+// Read compatibility for sample parts saved by older versions. No sample-library creation action is exposed.
 import {
   BoxGeometry,
   CylinderGeometry,
@@ -131,19 +132,3 @@ export function sampleMesh(key: string) {
   [...pieces, ...clean].forEach((g) => g.dispose());
   return result;
 }
-export const samples = [
-  ["Angle bracket", "brackets", "bracket:0"],
-  ["Gusset bracket", "brackets", "bracket:1"],
-  ["Wide angle bracket", "brackets", "bracket:2"],
-  ["Corner support", "brackets", "bracket:3"],
-  ["Tall angle bracket", "brackets", "bracket:4"],
-  ["Reinforced bracket", "brackets", "bracket:5"],
-  ["Flange hub", "hubs", "hub:0"],
-  ["Shaft coupling", "hubs", "hub:1"],
-  ["Spacer hub", "hubs", "hub:2"],
-  ["Extended coupling", "hubs", "hub:3"],
-  ["Motor mount", "mounts", "mount:0"],
-  ["Sensor pedestal", "mounts", "mount:1"],
-  ["Bearing mount", "mounts", "mount:2"],
-  ["Electronics tray", "enclosures", "enclosure:0"],
-];

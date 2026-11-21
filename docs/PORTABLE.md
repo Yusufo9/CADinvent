@@ -42,10 +42,15 @@ Use `-browser none` to start without opening a tab. Open the printed address man
 - Libraries live in the browser's IndexedDB storage. Use the **same browser, browser profile, and address/port** each time.
 - Firefox and Chrome have separate libraries. The developer preview (`:5173`), a website, and the portable app (`:47831`) also have separate libraries.
 - Moving the executable does not move or erase the library. Private browsing, clearing browser site data, or browser storage eviction can remove it.
-- Export JSON/CSV for labels, and keep original CAD files backed up. Manifests do not contain source geometry and cannot currently be restored automatically.
+- Use **Export Workspace** to download one ZIP containing `workspace.json` at its root and each original model under `models/`. Keep this file as your portable backup. **Import Workspace** accepts the ZIP and restores a new workspace with its categories, models, favorites, and All Parts inclusion settings. Existing workspaces remain intact; duplicate workspace names receive a suffix.
+- Use **Add models** or the drop zone for new STL/OBJ/PLY files. Folder import and sample-library creation are no longer offered. Standalone JSON/CSV exports are no longer supported.
+- The workspace dropdown lets you create, rename, switch, and delete projects. Deletion asks for confirmation and removes that project's browser-local copies. Deleting the last workspace creates an empty Personal workspace 1.
+- Use **Categories** to see all shelves. The ± button includes/excludes a shelf from **All Parts**; Unclassified starts excluded. Category stars show their contents in **Favorites**, alongside individually starred parts. Deleting a category preserves its models by moving them to the destination named in the confirmation dialog.
 - To update, stop the app, replace the executable, and restart it with the same port and browser.
 
 Supported formats: STL, OBJ, PLY. Use a current Firefox, Chrome, Edge, or Safari with WebGL 2 enabled. STEP/IGES and native CAD files are not supported yet.
+
+Workspace ZIP limits: 256 MiB of source models, 80 MiB per model, 5,000 parts, and 1,000 categories. Imports verify metadata, paths, and SHA-256 checksums before saving. Damaged archives do not partially replace your workspace. ZIP import/export happens locally in a worker; large archives still need additional browser memory.
 
 ## For repository maintainers
 

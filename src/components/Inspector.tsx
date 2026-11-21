@@ -12,7 +12,7 @@ import {
 import type { Category, Part } from "../types";
 import { loadFile } from "../lib/storage";
 import { parseFile } from "../lib/importer";
-import { sampleMesh } from "../lib/samples";
+import { sampleMesh } from "../lib/legacySamples";
 import { makeScene } from "../lib/rendering";
 import { download } from "../lib/export";
 import { STLExporter } from "three/addons/exporters/STLExporter.js";

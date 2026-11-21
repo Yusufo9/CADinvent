@@ -45,8 +45,11 @@ CADinvent/
 | STL/OBJ/PLY okuma | `src/lib/parser.ts` |
 | Worker ve içe aktarma sınırları | `src/lib/importer.ts`, `src/lib/mesh.worker.ts` |
 | Tarayıcıya kayıt | `src/lib/storage.ts` |
-| JSON/CSV dışa aktarma | `src/lib/export.ts` |
-| Örnek parçaların geometrisi | `src/lib/samples.ts` |
+| Workspace menüsü, oluşturma, ad değiştirme, silme | `src/components/WorkspacePicker.tsx`, `src/hooks/useWorkspaces.ts` |
+| Kategorilerin All Parts ve Favorites davranışı | `src/lib/categories.ts` |
+| ZIP yedekleme ve geri yükleme | `src/lib/backup.ts`, `src/lib/archive.ts`, `src/lib/archive.worker.ts` |
+| Dosya indirme | `src/lib/export.ts` |
+| Eski sürümlerde kaydedilmiş örnek parçaları okuma uyumluluğu | `src/lib/legacySamples.ts` |
 | Veri alanları ve varsayılan kategoriler | `src/types.ts` |
 | Taşınabilir uygulama başlatıcısı | `portable/main.go` |
 
@@ -69,9 +72,11 @@ Alternatif: **Terminal → Run Task → CADinvent: development server**. Sunucuy
 
 `index.html` → `src/main.tsx` → `src/App.tsx`
 
-`App.tsx`, parçaları ve kategorileri tutar. Kategori satırlarını `CategoryRow` ile gösterir. Bir parçaya tıklanınca `Inspector` açılır. Arayüzdeki işlemler `lib/` içindeki işlevleri çağırır.
+`App.tsx`, aktif workspace'i `hooks/useWorkspaces.ts` üzerinden alır. Her workspace'in parça ve kategori listesi ayrıdır. Kategori satırlarını `CategoryRow` ile gösterir. Bir parçaya tıklanınca `Inspector` açılır. Arayüzdeki işlemler `lib/` içindeki işlevleri çağırır.
 
 Dosya içe aktarmada: `importer.ts` → `mesh.worker.ts` → `parser.ts` → `rendering.ts` ile küçük resim → `storage.ts` ile kayıt.
+
+Workspace yedeklemede: `backup.ts` → `archive.worker.ts` ile tek ZIP. ZIP içinde kökte `workspace.json`, `models/` altında kaynak dosyalar bulunur. Geri yüklemede dosyalar doğrulanır, küçük resimler yeniden üretilir ve tüm proje tek veritabanı işlemiyle kaydedilir. `Category.includedInAll` ± düğmesini, `Category.favorite` kategori yıldızını yönetir; `Part.favorite` bağımsız kalır.
 
 ## Düzenlemeyi tamamlayınca derle
 

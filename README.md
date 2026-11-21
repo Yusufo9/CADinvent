@@ -27,18 +27,20 @@ In VSCodium, use **Terminal → Run Task → CADinvent: development server**. To
 
 ## MVP
 
-- Batch STL (ASCII/binary), OBJ, and PLY import; folder selection and file drop zone.
+- Batch STL (ASCII/binary), OBJ, and PLY import through Add models and the file drop zone.
+- Independent personal workspaces: create, rename, switch, and delete from the navbar. Deletion requires confirmation; deleting the last workspace creates an empty replacement.
 - Editable, collapsible categories with square cards in horizontally scrolling shelves.
 - Drag parts between categories, use a card selector, or select several cards and move them together.
 - Search by filename/category, filter by format, sort, and favorite parts.
 - Click a part for orbit, pan, zoom, camera reset, solid/wireframe, dimensions, and source download.
-- JSON/CSV classification export, including selected-part export. Exports are manifests, not source-file archives or restore files.
+- Export Workspace downloads one ZIP containing root `workspace.json` and individual source files under `models/`. Import Workspace accepts that ZIP and restores a new independent workspace, including category settings and part favorites.
+- Category stars include their contents in Favorites without changing individual part stars. The icon-only ± button controls inclusion in All Parts; Unclassified starts excluded. Categories shows every shelf, including excluded ones.
 - Files, thumbnails, categories, and favorites persist in IndexedDB on the current browser origin. Clearing site data removes the library; localhost and the hosted site have independent libraries.
-- Explicitly labeled, generated sample meshes let you exercise the workflow without uploading files.
+- Folder import, sample-library creation, and separate JSON/CSV exports have been removed. Previously saved sample parts remain readable for compatibility.
 
 ## Stack and architecture
 
-React 19 + TypeScript + Vite, custom responsive CSS, Three.js, Lucide icons, and `idb`. There is no backend for CAD files. The app does not upload imported geometry. Typography uses system fonts, so no external fonts, CDN requests, or internet access are needed at runtime.
+React 19 + TypeScript + Vite, custom responsive CSS, Three.js, Lucide icons, `idb`, and `fflate`. There is no backend for CAD files. The app does not upload imported geometry. Typography uses system fonts, so no external fonts, CDN requests, or internet access are needed at runtime.
 
 The optional Go launcher embeds the production assets in one executable and serves them on `127.0.0.1:47831`. It uses the Go standard library only and does not include a browser or a package manager. The source is in `portable/`; packaging scripts are in `scripts/`. See [Go's embedded filesystem documentation](https://go.dev/pkg/embed/) for the mechanism.
 
@@ -49,7 +51,9 @@ The optional Go launcher embeds the production assets in one executable and serv
 - `src/lib/importer.ts`: bounded sequential queue, transferable buffers, and a 30-second per-file timeout. Each file uses a worker that is terminated when parsing completes.
 - `src/lib/rendering.ts`: one shared 400 × 400 thumbnail renderer per batch. Mesh geometry/materials are disposed after each thumbnail; the renderer is released at batch completion. Cards display lazy-loaded WebP images rather than maintaining one WebGL context per card.
 - `src/lib/storage.ts`: original files stored separately from library metadata in IndexedDB. Geometry is parsed again only when inspected, and disposed when the inspector closes.
-- `src/lib/export.ts`: versioned JSON manifests and safely quoted CSV (formula-like values are escaped).
+- `src/hooks/useWorkspaces.ts`: independent workspace state, serialized persistence, and atomic restore/deletion.
+- `src/lib/categories.ts`: category inclusion, Favorites filtering, and non-destructive category removal.
+- `src/lib/backup.ts` / `archive.worker.ts`: ZIP creation and restoration. Compression runs in a disposable worker; source checksums and paths are validated before any restore writes. Thumbnails are regenerated sequentially, and all restored files/metadata commit in one IndexedDB transaction.
 
 References: [Three.js documentation](https://threejs.org/docs/) and [resource disposal](https://threejs.org/manual/en/how-to-dispose-of-objects.html).
 
@@ -57,13 +61,15 @@ References: [Three.js documentation](https://threejs.org/docs/) and [resource di
 
 This is a mesh viewer, not a solid-model CAD editor. STEP/IGES, BREP, native CAD documents, assemblies, MTL/textures, and point clouds are not supported. Files are limited to 80 MB and two million triangles; parsing can temporarily allocate additional worker memory before the triangle limit is checked. STL/OBJ/PLY do not reliably encode physical units, so dimensions are shown in native coordinates. Samples are illustrative geometry, not manufacturing-ready designs.
 
-Thumbnails are lazy decoded, but all metadata/thumbnails remain in React memory and cards are not virtualized. Browser storage quotas and device GPU limits still apply. Importing a duplicate file creates another part. Removing a category moves its parts to Unclassified; removing selected parts deletes their browser-local source copies, never the original disk files.
+Thumbnails are lazy decoded, but all workspace metadata/thumbnails remain in React memory and cards are not virtualized. Browser storage quotas and device GPU limits still apply. Importing a duplicate file creates another part. ZIP backups are limited to 256 MiB of source models, 80 MiB per model, 5,000 parts, and 1,000 categories. Packing/unpacking holds archive data in memory; this is not a streaming format implementation.
+
+Any category, including Unclassified, can be deleted after confirmation. Its parts move to Unclassified when available, otherwise another category; if no category remains, a Recovered parts shelf is created for those models. Empty categories can all be removed. Adding raw models recreates Unclassified when necessary. Removing selected parts or deleting a workspace removes browser-local source copies, never original disk files.
 
 ## Next steps
 
 1. STEP/IGES tessellation in a worker through an Open Cascade WASM adapter, with assemblies and unit metadata.
 2. Virtualized shelves, thumbnail blobs, an LRU geometry cache, and progressive previews for very large libraries.
-3. Manifest restore with file matching/hashes, duplicate detection, and organized ZIP export.
+3. Streaming archives for larger projects, duplicate detection, and incremental backup workflows.
 4. Tags, bulk rename, saved views, keyboard selection, undo history, and optional similarity suggestions.
 5. Measurement tools, clipping planes, surface normals, and material/assembly support.
 6. Optional authenticated shared libraries after deciding where CAD files should be stored.

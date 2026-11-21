@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { Category, Part } from "../types";
+import { includedInAll } from "../lib/categories";
 interface Props {
   category: Category;
   categories: Category[];
@@ -18,6 +19,8 @@ interface Props {
   onToggle: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
+  onInclude: () => void;
+  onCategoryFavorite: () => void;
   onInspect: (p: Part) => void;
   onSelect: (id: string) => void;
   onFavorite: (id: string) => void;
@@ -31,6 +34,8 @@ export default function CategoryRow({
   onToggle,
   onRename,
   onDelete,
+  onInclude,
+  onCategoryFavorite,
   onInspect,
   onSelect,
   onFavorite,
@@ -138,16 +143,41 @@ export default function CategoryRow({
           <Pencil size={14} />
         </button>
         <div className="category-actions">
-          {category.id !== "unclassified" && (
-            <button
-              className="icon-button subtle"
-              title="Delete category and move its parts to Unclassified"
-              aria-label={`Delete ${category.name} category`}
-              onClick={onDelete}
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
+          <button
+            className={`icon-button category-favorite ${category.favorite ? "is-favorite" : ""}`}
+            aria-label={`${category.favorite ? "Unfavorite" : "Favorite"} ${category.name} category`}
+            aria-pressed={!!category.favorite}
+            title="Favorite category"
+            onClick={onCategoryFavorite}
+          >
+            <Star
+              size={15}
+              fill={category.favorite ? "currentColor" : "none"}
+            />
+          </button>
+          <button
+            className={`icon-button category-include ${includedInAll(category) ? "is-included" : ""}`}
+            aria-label={`${includedInAll(category) ? "Exclude" : "Include"} ${category.name} ${includedInAll(category) ? "from" : "in"} All Parts`}
+            aria-pressed={includedInAll(category)}
+            title={
+              includedInAll(category)
+                ? "Exclude from All Parts"
+                : "Include in All Parts"
+            }
+            onClick={onInclude}
+          >
+            <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>
+              ±
+            </span>
+          </button>
+          <button
+            className="icon-button category-delete"
+            title="Delete category"
+            aria-label={`Delete ${category.name} category`}
+            onClick={onDelete}
+          >
+            <Trash2 size={14} />
+          </button>
           <span className="row-hint">
             {parts.length > 0 ? "SCROLL TO EXPLORE" : "READY FOR PARTS"}
           </span>

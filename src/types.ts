@@ -3,6 +3,8 @@ export interface Category {
   name: string;
   color: string;
   collapsed?: boolean;
+  includedInAll?: boolean;
+  favorite?: boolean;
 }
 export interface Part {
   id: string;
@@ -21,6 +23,15 @@ export interface Library {
   categories: Category[];
   parts: Part[];
 }
+export interface Workspace extends Library {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+export interface WorkspaceState {
+  activeWorkspaceId: string;
+  workspaces: Workspace[];
+}
 export interface MeshData {
   positions: Float32Array;
   normals: Float32Array;
@@ -32,5 +43,10 @@ export const defaultCategories: Category[] = [
   { id: "hubs", name: "Hubs & couplings", color: "#a5b7e6" },
   { id: "mounts", name: "Mounts", color: "#e0b78d" },
   { id: "enclosures", name: "Enclosures", color: "#c4a3d8" },
-  { id: "unclassified", name: "Unclassified", color: "#89958c" },
+  {
+    id: "unclassified",
+    name: "Unclassified",
+    color: "#89958c",
+    includedInAll: false,
+  },
 ];

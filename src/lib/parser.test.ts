@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseMesh } from "./parser";
-import { sampleMesh } from "./samples";
-import { csv, manifest } from "./export";
-import { defaultCategories, type Library } from "../types";
+import { sampleMesh } from "./legacySamples";
 const buffer = (s: string) => new TextEncoder().encode(s).buffer;
 describe("mesh import", () => {
   it("reads ASCII STL and preserves dimensions before centering", () => {
@@ -61,33 +59,4 @@ describe("mesh import", () => {
       expect(m.dimensions.every((n) => Number.isFinite(n) && n > 0)).toBe(true);
     },
   );
-});
-describe("classification export", () => {
-  const library: Library = {
-    categories: defaultCategories,
-    parts: [
-      {
-        id: "a",
-        name: "=SUM(1,2).stl",
-        categoryId: "brackets",
-        format: "STL",
-        bytes: 100,
-        triangles: 1,
-        dimensions: [1, 2, 3],
-        thumbnail: "private-preview",
-        createdAt: "2026-11-20",
-      },
-    ],
-  };
-  it("includes category IDs but excludes thumbnail data from manifests", () => {
-    const result = manifest(library);
-    expect(result.parts[0].categoryId).toBe("brackets");
-    expect(JSON.stringify(result)).not.toContain("private-preview");
-    expect(result.schemaVersion).toBe(1);
-  });
-  it("quotes CSV fields and neutralizes spreadsheet formulas", () => {
-    const result = csv(library);
-    expect(result).toContain('"\'=SUM(1,2).stl"');
-    expect(result).toContain('"Brackets"');
-  });
 });

@@ -4,7 +4,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const require = createRequire(import.meta.url);
-const packages = ["react", "react-dom", "three", "lucide-react", "idb"];
+const packages = [
+  "react",
+  "react-dom",
+  "three",
+  "lucide-react",
+  "idb",
+  "fflate",
+];
 let notices =
   "CADinvent — third-party notices\n\nThese licenses apply to the named dependencies, not to the original application code.\n";
 for (const name of packages) {

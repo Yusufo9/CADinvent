@@ -19,26 +19,30 @@ import {
   Star,
   X,
   Check,
-  ChevronDown,
   Command,
-  FileJson,
-  FileSpreadsheet,
   CircleHelp,
   HardDrive,
   LoaderCircle,
   Trash2,
 } from "lucide-react";
-import type { Library, Part } from "./types";
-import { defaultCategories } from "./types";
-import { deleteFile, loadLibrary, saveFile, saveLibrary } from "./lib/storage";
+import type { Part, Category, Workspace } from "./types";
+import { deleteFile, saveFile } from "./lib/storage";
 import { parseFile } from "./lib/importer";
-import { csv, download, manifest } from "./lib/export";
+import { download } from "./lib/export";
 import CategoryRow from "./components/CategoryRow";
+import WorkspacePicker from "./components/WorkspacePicker";
+import ConfirmDialog from "./components/ConfirmDialog";
+import {
+  includedInAll,
+  matchesView,
+  deletionDestination,
+  removeCategory,
+  addImportedPart,
+} from "./lib/categories";
+import { useWorkspaces } from "./hooks/useWorkspaces";
+
 const Inspector = lazy(() => import("./components/Inspector"));
-const empty: Library = { categories: defaultCategories, parts: [] };
 export default function App() {
-  const [library, setLibrary] = useState<Library>(empty);
-  const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState("");
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState("all");
@@ -48,43 +52,51 @@ export default function App() {
   const [active, setActive] = useState<string>();
   const [notice, setNotice] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
-  const [menu, setMenu] = useState("");
+  const reportStorageError = useCallback(
+    (message: string) => setErrors((previous) => [...previous, message]),
+    [],
+  );
+  const {
+    workspace: library,
+    workspaces,
+    setLibrary,
+    selectWorkspace,
+    addWorkspace,
+    renameWorkspace,
+    restoreWorkspace,
+    deleteWorkspace,
+    ready,
+    saveStatus,
+  } = useWorkspaces(reportStorageError);
+  const [deletingWorkspace, setDeletingWorkspace] = useState<Workspace>();
+  const [deletingCategory, setDeletingCategory] = useState<{
+    category: Category;
+    destination: Category;
+  }>();
+  const cancelWorkspaceDelete = useCallback(
+    () => setDeletingWorkspace(undefined),
+    [],
+  );
+  const cancelCategoryDelete = useCallback(
+    () => setDeletingCategory(undefined),
+    [],
+  );
   const [help, setHelp] = useState(false);
   const [newCategory, setNewCategory] = useState(false);
   const [categoryName, setCategoryName] = useState("");
   const [dragging, setDragging] = useState(false);
   const files = useRef<HTMLInputElement>(null),
-    folder = useRef<HTMLInputElement>(null),
+    workspaceFiles = useRef<HTMLInputElement>(null),
     search = useRef<HTMLInputElement>(null);
   const busyRef = useRef(false);
-  const loaded = useRef(false);
   useEffect(() => {
-    if (loaded.current) return;
-    loaded.current = true;
-    loadLibrary()
-      .then((saved) => {
-        if (saved) setLibrary(saved);
-        setReady(true);
-      })
-      .catch(() => {
-        setErrors([
-          "Browser storage is unavailable. Changes may not persist in this browser.",
-        ]);
-        setReady(true);
-      });
-  }, []);
-  useEffect(() => {
-    if (!ready) return;
-    const timer = setTimeout(() => {
-      saveLibrary(library).catch(() =>
-        setErrors((e) => [
-          ...e,
-          "Could not save the library. Browser storage may be full. Export a manifest to preserve labels.",
-        ]),
-      );
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [library, ready]);
+    setQuery("");
+    setTab("all");
+    setFormat("all");
+    setSelected(new Set());
+    setActive(undefined);
+    setNewCategory(false);
+  }, [library.id]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
@@ -92,7 +104,6 @@ export default function App() {
         search.current?.focus();
       }
       if (e.key === "Escape") {
-        setMenu("");
         setHelp(false);
         setNewCategory(false);
       }
@@ -106,6 +117,89 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [notice]);
   const closeInspector = useCallback(() => setActive(undefined), []);
+  async function exportWorkspace() {
+    if (busyRef.current || !ready) return;
+    busyRef.current = true;
+    setErrors([]);
+    setBusy("Preparing workspace backup…");
+    try {
+      const { createBackup } = await import("./lib/backup");
+      const backup = await createBackup(library, setBusy);
+      download(
+        new Uint8Array(backup.zip).buffer,
+        backup.name + ".zip",
+        "application/zip",
+      );
+      setNotice("Workspace ZIP exported.");
+    } catch (e) {
+      setErrors([e instanceof Error ? e.message : "Workspace export failed."]);
+    } finally {
+      busyRef.current = false;
+      setBusy("");
+    }
+  }
+  async function importWorkspace(list: File[]) {
+    if (busyRef.current || !ready || !list.length) return;
+    busyRef.current = true;
+    setErrors([]);
+    setBusy("Opening workspace backup…");
+    try {
+      const { readBackup } = await import("./lib/backup");
+      const restored = await readBackup(list, setBusy);
+      setBusy("Saving restored workspace…");
+      const name = await restoreWorkspace(restored.workspace, restored.files);
+      setNotice(
+        `Workspace “${name}” restored with ${restored.workspace.parts.length} parts.`,
+      );
+    } catch (e) {
+      setErrors([
+        e instanceof Error
+          ? e.message
+          : "Workspace restore failed. Your existing workspaces were not changed.",
+      ]);
+    } finally {
+      busyRef.current = false;
+      setBusy("");
+    }
+  }
+  async function confirmWorkspaceDelete() {
+    if (!deletingWorkspace || busyRef.current) return;
+    const target = deletingWorkspace;
+    setDeletingWorkspace(undefined);
+    busyRef.current = true;
+    setBusy("Deleting workspace…");
+    try {
+      await deleteWorkspace(target.id);
+      setSelected(new Set());
+      setActive(undefined);
+      setNotice("Workspace “" + target.name + "” deleted.");
+    } catch {
+      setErrors([
+        "Workspace could not be deleted. Your workspace and model files were kept.",
+      ]);
+    } finally {
+      busyRef.current = false;
+      setBusy("");
+    }
+  }
+  function confirmCategoryDelete() {
+    if (!deletingCategory) return;
+    const { category, destination } = deletingCategory;
+    setLibrary((l) => removeCategory(l, category.id, destination));
+    setDeletingCategory(undefined);
+    setSelected(new Set());
+    setTab("categories");
+    setNotice(
+      "Category “" + category.name + "” deleted. Model files were kept.",
+    );
+  }
+  function updateCategory(id: string, update: (c: Category) => Category) {
+    setLibrary((l) => ({
+      ...l,
+      categories: l.categories.map((c) => (c.id === id ? update(c) : c)),
+    }));
+    setSelected(new Set());
+  }
   function move(ids: string[], categoryId: string) {
     setLibrary((l) => ({
       ...l,
@@ -119,10 +213,9 @@ export default function App() {
     setSelected(new Set());
   }
   async function importFiles(list: File[]) {
-    if (busyRef.current || !list.length) return;
+    if (busyRef.current || !ready || !list.length) return;
     busyRef.current = true;
     setErrors([]);
-    setMenu("");
     let count = 0;
     let release = () => {};
     setBusy("Preparing importer…");
@@ -149,7 +242,7 @@ export default function App() {
             thumbnail: image,
             createdAt: new Date().toISOString(),
           };
-          setLibrary((l) => ({ ...l, parts: [...l.parts, part] }));
+          setLibrary((l) => addImportedPart(l, part));
           count++;
         } catch (e) {
           setErrors((prev) => [
@@ -169,50 +262,7 @@ export default function App() {
       setBusy("");
       busyRef.current = false;
       setNotice(`${count} of ${list.length} files imported into Unclassified.`);
-      setTab("all");
-    }
-  }
-  async function addSamples() {
-    if (busyRef.current) return;
-    busyRef.current = true;
-    setBusy("Building sample library…");
-    let release = () => {};
-    try {
-      const [{ samples, sampleMesh }, { thumbnail, releaseThumbnailRenderer }] =
-        await Promise.all([import("./lib/samples"), import("./lib/rendering")]);
-      release = releaseThumbnailRenderer;
-      const parts: Part[] = [];
-      for (const [name, categoryId, key] of samples) {
-        if (library.parts.some((p) => p.demo === key)) continue;
-        const mesh = sampleMesh(key);
-        parts.push({
-          id: crypto.randomUUID(),
-          name: `${name.toLowerCase().replaceAll(" ", "_")}.stl`,
-          categoryId: library.categories.some((c) => c.id === categoryId)
-            ? categoryId
-            : "unclassified",
-          format: "STL",
-          bytes: 0,
-          triangles: mesh.triangles,
-          dimensions: mesh.dimensions,
-          thumbnail: thumbnail(mesh),
-          createdAt: new Date().toISOString(),
-          demo: key,
-        });
-        await new Promise((r) => setTimeout(r, 0));
-      }
-      setLibrary((l) => ({ ...l, parts: [...l.parts, ...parts] }));
-      setNotice(
-        `${parts.length} sample parts added. Try opening one in the inspector.`,
-      );
-    } catch (e) {
-      setErrors([
-        e instanceof Error ? e.message : "Unable to generate previews.",
-      ]);
-    } finally {
-      release();
-      busyRef.current = false;
-      setBusy("");
+      setTab("unclassified");
     }
   }
   function addCategory() {
@@ -233,6 +283,7 @@ export default function App() {
     }));
     setCategoryName("");
     setNewCategory(false);
+    setTab("categories");
     setNotice(`Created ${name}.`);
   }
   async function removeSelected() {
@@ -250,8 +301,9 @@ export default function App() {
   const shown = library.parts
     .filter(
       (p) =>
-        (tab !== "favorites" || p.favorite) &&
-        (tab !== "unclassified" || p.categoryId === "unclassified") &&
+        !!library.categories.find(
+          (c) => c.id === p.categoryId && matchesView(p, c, tab),
+        ) &&
         (format === "all" || p.format === format) &&
         `${p.name} ${library.categories.find((c) => c.id === p.categoryId)?.name}`
           .toLowerCase()
@@ -264,16 +316,31 @@ export default function App() {
           ? b.triangles - a.triangles
           : Date.parse(a.createdAt) - Date.parse(b.createdAt),
     );
-  const categories =
-    tab === "unclassified"
-      ? library.categories.filter((c) => c.id === "unclassified")
-      : library.categories;
+  const categories = library.categories.filter((c) => {
+    if (tab === "all" && !includedInAll(c)) return false;
+    if (tab === "unclassified" && c.id !== "unclassified") return false;
+    if (
+      tab === "favorites" &&
+      !c.favorite &&
+      !shown.some((p) => p.categoryId === c.id)
+    )
+      return false;
+    if (query || format !== "all")
+      return (
+        shown.some((p) => p.categoryId === c.id) ||
+        (format === "all" && c.name.toLowerCase().includes(query.toLowerCase()))
+      );
+    return true;
+  });
+  const allPartsCount = library.parts.filter((p) =>
+    library.categories.some((c) => c.id === p.categoryId && includedInAll(c)),
+  ).length;
+  useEffect(() => {
+    setSelected(new Set());
+  }, [tab, query, format]);
   const activePart = library.parts.find((p) => p.id === active);
   const imported = library.parts.filter((p) => !p.demo).length;
   const totalBytes = library.parts.reduce((a, p) => a + p.bytes, 0);
-  const exportLibrary = selected.size
-    ? { ...library, parts: library.parts.filter((p) => selected.has(p.id)) }
-    : library;
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -284,90 +351,33 @@ export default function App() {
           CAD<span>invent</span>
         </a>
         <div className="top-divider" />
-        <span className="workspace-name">
-          Personal workspace <ChevronDown size={13} />
-        </span>
+        <WorkspacePicker
+          workspace={library}
+          workspaces={workspaces}
+          disabled={!ready || !!busy}
+          onSelect={selectWorkspace}
+          onCreate={addWorkspace}
+          onRename={renameWorkspace}
+          onDelete={setDeletingWorkspace}
+        />
         <div className="top-actions">
           <span className="local-badge">
             <span /> Local library
           </span>
-          <div className="menu-wrap">
-            <button
-              className="button"
-              onClick={() => setMenu(menu === "export" ? "" : "export")}
-            >
-              <Download size={16} /> Export <ChevronDown size={13} />
-            </button>
-            {menu === "export" && (
-              <div className="dropdown">
-                <span className="dropdown-label">
-                  {selected.size
-                    ? `${selected.size} selected parts`
-                    : "Entire library"}{" "}
-                  · labels & metadata
-                </span>
-                <button
-                  onClick={() => {
-                    download(
-                      JSON.stringify(manifest(exportLibrary), null, 2),
-                      "cadinvent-manifest.json",
-                      "application/json",
-                    );
-                    setMenu("");
-                    setNotice(
-                      "JSON manifest exported. Source files are downloaded from the inspector.",
-                    );
-                  }}
-                >
-                  <FileJson size={16} /> Export JSON manifest
-                </button>
-                <button
-                  onClick={() => {
-                    download(
-                      csv(exportLibrary),
-                      "cadinvent-library.csv",
-                      "text/csv;charset=utf-8",
-                    );
-                    setMenu("");
-                  }}
-                >
-                  <FileSpreadsheet size={16} /> Export CSV
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="split-button">
-            <button
-              className="button primary"
-              disabled={!!busy || !ready}
-              onClick={() => files.current?.click()}
-            >
-              <Plus size={17} /> Import files
-            </button>
-            <button
-              className="button primary split"
-              disabled={!!busy || !ready}
-              aria-label="More import options"
-              onClick={() => setMenu(menu === "import" ? "" : "import")}
-            >
-              <ChevronDown size={14} />
-            </button>
-            {menu === "import" && (
-              <div className="dropdown">
-                <button
-                  onClick={() => {
-                    folder.current?.click();
-                    setMenu("");
-                  }}
-                >
-                  <FolderOpen size={16} /> Import a folder
-                </button>
-                <button onClick={addSamples}>
-                  <Boxes size={16} /> Load sample library
-                </button>
-              </div>
-            )}
-          </div>
+          <button
+            className="button nav-action"
+            disabled={!!busy || !ready}
+            onClick={exportWorkspace}
+          >
+            <Download size={16} /> Export Workspace
+          </button>
+          <button
+            className="button nav-action"
+            disabled={!!busy || !ready}
+            onClick={() => workspaceFiles.current?.click()}
+          >
+            <Upload size={16} /> Import Workspace
+          </button>
           <button
             className="icon-button help-button"
             aria-label="Help and supported formats"
@@ -390,16 +400,18 @@ export default function App() {
       />
       <input
         type="file"
-        ref={folder}
+        ref={workspaceFiles}
         hidden
-        multiple
-        {...{ webkitdirectory: "" }}
+        accept=".zip"
         onChange={(e) => {
-          void importFiles(Array.from(e.target.files || []));
+          void importWorkspace(Array.from(e.target.files || []));
           e.target.value = "";
         }}
       />
-      <main>
+      <span className="sr-only" role="status">
+        {busy}
+      </span>
+      <main aria-busy={!!busy} inert={!!busy || !ready}>
         <div className="page-intro">
           <div>
             <div className="eyebrow intro-eyebrow">
@@ -443,14 +455,19 @@ export default function App() {
               className={tab === "all" ? "active" : ""}
               onClick={() => setTab("all")}
             >
-              <Layers3 size={16} /> All parts{" "}
-              <span>{library.parts.length}</span>
+              <Layers3 size={16} /> All parts <span>{allPartsCount}</span>
             </button>
             <button
               className={tab === "favorites" ? "active" : ""}
               onClick={() => setTab("favorites")}
             >
               <Star size={16} /> Favorites
+            </button>
+            <button
+              className={tab === "categories" ? "active" : ""}
+              onClick={() => setTab("categories")}
+            >
+              <FolderOpen size={16} /> Categories
             </button>
             <button
               className={tab === "unclassified" ? "active" : ""}
@@ -583,100 +600,100 @@ export default function App() {
                 <div>
                   <h2>Your next project starts with a part.</h2>
                   <p>
-                    Import your models, or explore a sample library to get a
-                    feel for the workspace.
+                    Add STL, OBJ, or PLY models below, or restore a workspace
+                    ZIP.
                   </p>
                 </div>
                 <button
                   className="button"
                   disabled={!!busy}
-                  onClick={addSamples}
+                  onClick={() => files.current?.click()}
                 >
-                  Explore sample parts
+                  Add models
                 </button>
               </div>
             )}
-            {shown.length === 0 &&
-            library.parts.length > 0 &&
-            (query || tab === "favorites" || format !== "all") ? (
+            {categories.length === 0 ? (
               <div className="no-results">
                 <Search size={28} />
-                <h2>No matching parts</h2>
-                <p>Try another search, format, or library tab.</p>
+                <h2>No matching categories</h2>
+                <p>
+                  Open Categories to manage all shelves and choose which appear
+                  in All Parts.
+                </p>
                 <button
                   className="button"
                   onClick={() => {
                     setQuery("");
                     setFormat("all");
-                    setTab("all");
+                    setTab("categories");
                   }}
                 >
-                  Show all parts
+                  Show categories
                 </button>
               </div>
             ) : (
-              categories
-                .filter(
-                  (c) =>
-                    !(query || tab === "favorites" || format !== "all") ||
-                    shown.some((p) => p.categoryId === c.id),
-                )
-                .map((c) => (
-                  <CategoryRow
-                    key={c.id}
-                    category={c}
-                    categories={library.categories}
-                    parts={shown.filter((p) => p.categoryId === c.id)}
-                    selected={selected}
-                    onToggle={() =>
-                      setLibrary((l) => ({
-                        ...l,
-                        categories: l.categories.map((x) =>
-                          x.id === c.id ? { ...x, collapsed: !x.collapsed } : x,
-                        ),
-                      }))
-                    }
-                    onRename={(name) =>
-                      setLibrary((l) => ({
-                        ...l,
-                        categories: l.categories.map((x) =>
-                          x.id === c.id ? { ...x, name } : x,
-                        ),
-                      }))
-                    }
-                    onDelete={() => {
-                      setLibrary((l) => ({
-                        categories: l.categories.filter((x) => x.id !== c.id),
-                        parts: l.parts.map((p) =>
-                          p.categoryId === c.id
-                            ? { ...p, categoryId: "unclassified" }
-                            : p,
-                        ),
-                      }));
-                      setNotice(
-                        "Category removed. Its parts are now in Unclassified.",
-                      );
-                    }}
-                    onInspect={(p) => setActive(p.id)}
-                    onSelect={(id) =>
-                      setSelected((current) => {
-                        const next = new Set(current);
-                        if (next.has(id)) next.delete(id);
-                        else next.add(id);
-                        return next;
-                      })
-                    }
-                    onFavorite={(id) =>
-                      setLibrary((l) => ({
-                        ...l,
-                        parts: l.parts.map((p) =>
-                          p.id === id ? { ...p, favorite: !p.favorite } : p,
-                        ),
-                      }))
-                    }
-                    onMove={move}
-                  />
-                ))
+              categories.map((c) => (
+                <CategoryRow
+                  key={c.id}
+                  category={c}
+                  categories={library.categories}
+                  parts={shown.filter((p) => p.categoryId === c.id)}
+                  selected={selected}
+                  onToggle={() =>
+                    setLibrary((l) => ({
+                      ...l,
+                      categories: l.categories.map((x) =>
+                        x.id === c.id ? { ...x, collapsed: !x.collapsed } : x,
+                      ),
+                    }))
+                  }
+                  onRename={(name) =>
+                    setLibrary((l) => ({
+                      ...l,
+                      categories: l.categories.map((x) =>
+                        x.id === c.id ? { ...x, name } : x,
+                      ),
+                    }))
+                  }
+                  onDelete={() =>
+                    setDeletingCategory({
+                      category: c,
+                      destination: deletionDestination(library, c.id),
+                    })
+                  }
+                  onInclude={() =>
+                    updateCategory(c.id, (category) => ({
+                      ...category,
+                      includedInAll: !includedInAll(category),
+                    }))
+                  }
+                  onCategoryFavorite={() =>
+                    updateCategory(c.id, (category) => ({
+                      ...category,
+                      favorite: !category.favorite,
+                    }))
+                  }
+                  onInspect={(p) => setActive(p.id)}
+                  onSelect={(id) =>
+                    setSelected((current) => {
+                      const next = new Set(current);
+                      if (next.has(id)) next.delete(id);
+                      else next.add(id);
+                      return next;
+                    })
+                  }
+                  onFavorite={(id) =>
+                    setLibrary((l) => ({
+                      ...l,
+                      parts: l.parts.map((p) =>
+                        p.id === id ? { ...p, favorite: !p.favorite } : p,
+                      ),
+                    }))
+                  }
+                  onMove={move}
+                />
+              ))
             )}
           </>
         )}
@@ -703,7 +720,7 @@ export default function App() {
             <p>
               Drop CAD files here, or{" "}
               <button disabled={!!busy} onClick={() => files.current?.click()}>
-                browse files
+                Add models
               </button>
             </p>
           </div>
@@ -717,8 +734,7 @@ export default function App() {
       </main>
       <footer>
         <span>
-          <HardDrive size={13} />{" "}
-          {ready ? "Saved on this device" : "Connecting to local storage"}
+          <HardDrive size={13} /> {saveStatus}
           <span className="footer-dot">·</span>
           {(totalBytes / 1024 / 1024).toFixed(1)} MB of source files
         </span>
@@ -755,6 +771,41 @@ export default function App() {
             onMove={(category) => move([activePart.id], category)}
           />
         </Suspense>
+      )}
+      {deletingWorkspace && (
+        <ConfirmDialog
+          title={"Delete “" + deletingWorkspace.name + "”?"}
+          onCancel={cancelWorkspaceDelete}
+          onConfirm={confirmWorkspaceDelete}
+          action="Delete workspace"
+        >
+          <p>
+            This removes its {deletingWorkspace.parts.length} parts, categories,
+            and browser-stored model copies. Original files on your computer are
+            kept. Export a workspace ZIP first if you need a backup.
+          </p>
+          {workspaces.length === 1 && (
+            <p>A new empty Personal workspace 1 will replace it.</p>
+          )}
+        </ConfirmDialog>
+      )}
+      {deletingCategory && (
+        <ConfirmDialog
+          title={"Delete “" + deletingCategory.category.name + "”?"}
+          onCancel={cancelCategoryDelete}
+          onConfirm={confirmCategoryDelete}
+          action="Delete category"
+        >
+          <p>
+            {library.parts.some(
+              (p) => p.categoryId === deletingCategory.category.id,
+            )
+              ? "Its parts will move to “" +
+                deletingCategory.destination.name +
+                "”. Model files and part favorites will be kept."
+              : "This empty category will be removed."}
+          </p>
+        </ConfirmDialog>
       )}
       {newCategory && (
         <div
@@ -817,9 +868,9 @@ export default function App() {
             <span className="eyebrow">A LITTLE ORIENTATION</span>
             <h2>Your parts, in perspective.</h2>
             <p>
-              Import multiple <b>STL, OBJ, or PLY</b> mesh files, or choose a
-              folder from the import menu. STEP, IGES, assemblies, textures, and
-              material sidecars are not supported yet.
+              Use Add models or drop multiple <b>STL, OBJ, or PLY</b> mesh files
+              below. STEP, IGES, assemblies, textures, and material sidecars are
+              not supported yet.
             </p>
             <p>
               Click a part to inspect it. Drag cards onto a category, use the
@@ -827,14 +878,17 @@ export default function App() {
               Scroll each shelf horizontally to explore.
             </p>
             <p>
-              Files and labels are saved in this browser using IndexedDB.
-              Clearing site data removes them. JSON and CSV exports contain
-              labels and metadata; download source files from the inspector.
+              Files and labels are saved in this browser using IndexedDB. Each
+              workspace has its own parts and categories. Clearing site data
+              removes them. Export Workspace downloads one ZIP containing
+              workspace.json and models/. Import Workspace restores this ZIP as
+              a new workspace. Category favorites and All Parts inclusion are
+              saved too.
             </p>
             <p className="muted">
               Up to 80 MB and 2 million triangles per file. Local storage
-              capacity depends on your browser. Samples are generated meshes
-              labeled SAMPLE.
+              capacity depends on your browser. Workspace ZIPs support up to 256
+              MB of source models.
             </p>
             <button
               className="button primary full"
