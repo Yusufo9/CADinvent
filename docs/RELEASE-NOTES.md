@@ -10,4 +10,6 @@ Folder import, sample-library creation, and standalone JSON/CSV exports have bee
 
 The main sections now show All Parts, one tab per workspace, Unclassified, and Favorites. Workspace tabs contain the Add categories and Add models actions. The old introductory panel has been removed.
 
+Import and Export now use matching dropdown menus. Custom category deletion acts on the trash button without a second confirmation and preserves the model files in Unclassified.
+
 Read the included START-HERE.md for launch instructions, browser storage behavior, updates, and the current unsigned-package limitations. Checksums are in SHA256SUMS.txt.

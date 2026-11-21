@@ -70,16 +70,8 @@ export default function App() {
     saveStatus,
   } = useWorkspaces(reportStorageError);
   const [deletingWorkspace, setDeletingWorkspace] = useState<Workspace>();
-  const [deletingCategory, setDeletingCategory] = useState<{
-    category: Category;
-    destination: Category;
-  }>();
   const cancelWorkspaceDelete = useCallback(
     () => setDeletingWorkspace(undefined),
-    [],
-  );
-  const cancelCategoryDelete = useCallback(
-    () => setDeletingCategory(undefined),
     [],
   );
   const [help, setHelp] = useState(false);
@@ -87,14 +79,21 @@ export default function App() {
   const [categoryName, setCategoryName] = useState("");
   const [dragging, setDragging] = useState(false);
   const [exportMenu, setExportMenu] = useState(false);
+  const [importMenu, setImportMenu] = useState(false);
   const exportMenuRoot = useRef<HTMLDivElement>(null);
+  const importMenuRoot = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const close = (event: PointerEvent) => {
       if (!exportMenuRoot.current?.contains(event.target as Node))
         setExportMenu(false);
+      if (!importMenuRoot.current?.contains(event.target as Node))
+        setImportMenu(false);
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setExportMenu(false);
+      if (event.key === "Escape") {
+        setExportMenu(false);
+        setImportMenu(false);
+      }
     };
     document.addEventListener("pointerdown", close);
     document.addEventListener("keydown", escape);
@@ -201,12 +200,11 @@ export default function App() {
       setBusy("");
     }
   }
-  function confirmCategoryDelete() {
-    if (!deletingCategory || deletingCategory.category.id === "unclassified")
-      return;
-    const { category, destination } = deletingCategory;
-    setLibrary((l) => removeCategory(l, category.id, destination));
-    setDeletingCategory(undefined);
+  function deleteCategory(category: Category) {
+    if (category.id === "unclassified") return;
+    setLibrary((l) =>
+      removeCategory(l, category.id, deletionDestination(l, category.id)),
+    );
     setSelected(new Set());
     setTab("workspace");
     setNotice(
@@ -397,7 +395,10 @@ export default function App() {
               disabled={!!busy || !ready}
               aria-expanded={exportMenu}
               aria-haspopup="menu"
-              onClick={() => setExportMenu((open) => !open)}
+              onClick={() => {
+                setImportMenu(false);
+                setExportMenu((open) => !open);
+              }}
             >
               <Download size={16} /> Export <ChevronDown size={13} />
             </button>
@@ -409,13 +410,33 @@ export default function App() {
               </div>
             )}
           </div>
-          <button
-            className="button nav-action"
-            disabled={!!busy || !ready}
-            onClick={() => workspaceFiles.current?.click()}
-          >
-            <Upload size={16} /> Import Workspace
-          </button>
+          <div className="menu-wrap" ref={importMenuRoot}>
+            <button
+              className="button nav-action"
+              disabled={!!busy || !ready}
+              aria-expanded={importMenu}
+              aria-haspopup="menu"
+              onClick={() => {
+                setExportMenu(false);
+                setImportMenu((open) => !open);
+              }}
+            >
+              <Upload size={16} /> Import <ChevronDown size={13} />
+            </button>
+            {importMenu && (
+              <div className="dropdown" role="menu" aria-label="Import options">
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setImportMenu(false);
+                    workspaceFiles.current?.click();
+                  }}
+                >
+                  <Upload size={16} /> Import Workspace
+                </button>
+              </div>
+            )}
+          </div>
           <button
             className="icon-button help-button"
             aria-label="Help and supported formats"
@@ -692,12 +713,7 @@ export default function App() {
                         ),
                       }))
                     }
-                    onDelete={() =>
-                      setDeletingCategory({
-                        category: c,
-                        destination: deletionDestination(library, c.id),
-                      })
-                    }
+                    onDelete={() => deleteCategory(c)}
                     onInclude={() =>
                       updateCategory(c.id, (category) => ({
                         ...category,
@@ -827,24 +843,6 @@ export default function App() {
           {workspaces.length === 1 && (
             <p>A new empty Personal workspace 1 will replace it.</p>
           )}
-        </ConfirmDialog>
-      )}
-      {deletingCategory && (
-        <ConfirmDialog
-          title={"Delete “" + deletingCategory.category.name + "”?"}
-          onCancel={cancelCategoryDelete}
-          onConfirm={confirmCategoryDelete}
-          action="Delete category"
-        >
-          <p>
-            {library.parts.some(
-              (p) => p.categoryId === deletingCategory.category.id,
-            )
-              ? "Its parts will move to “" +
-                deletingCategory.destination.name +
-                "”. Model files and part favorites will be kept."
-              : "This empty category will be removed."}
-          </p>
         </ConfirmDialog>
       )}
       {newCategory && (

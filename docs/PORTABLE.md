@@ -46,7 +46,7 @@ Use `-browser none` to start without opening a tab. Open the printed address man
 - Use **Add models** or the drop zone for new STL/OBJ/PLY files. Folder import and sample-library creation are no longer offered. Standalone JSON/CSV exports are no longer supported.
 - The workspace dropdown lets you create, rename, switch, and delete projects. New projects start with Unclassified only. Deletion appears when at least two projects exist, asks for confirmation, and removes that project's browser-local copies.
 - The section order is All Parts, a tab for each workspace, Unclassified, Favorites. Workspace tabs show their project's custom categories and offer **Add categories** and **Add models**. More workspace tabs appear as you create projects; the tab row scrolls horizontally when needed. The ± button includes/excludes custom shelves from **All Parts**. Unclassified is mandatory and stays in its own section. Category stars show their contents in **Favorites**, alongside individually starred parts. Deleting a custom category preserves its models by moving them to Unclassified.
-- The header **Export** menu offers **Export Workspace**, which downloads the same complete ZIP backup.
+- The header **Import** and **Export** menus offer **Import Workspace** and **Export Workspace**. Category trash buttons act immediately and move their parts to Unclassified. Workspace deletion still asks for confirmation.
 - To update, stop the app, replace the executable, and restart it with the same port and browser.
 
 Supported formats: STL, OBJ, PLY. Use a current Firefox, Chrome, Edge, or Safari with WebGL 2 enabled. STEP/IGES and native CAD files are not supported yet.
