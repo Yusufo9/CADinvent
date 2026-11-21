@@ -34,7 +34,7 @@ In VSCodium, use **Terminal → Run Task → CADinvent: development server**. To
 - Search by filename/category, filter by format, sort, and favorite parts.
 - Click a part for orbit, pan, zoom, camera reset, solid/wireframe, dimensions, and source download.
 - Export Workspace downloads one ZIP containing root `workspace.json` and individual source files under `models/`. Import Workspace accepts that ZIP and restores a new independent workspace, including category settings and part favorites.
-- Category stars include their contents in Favorites without changing individual part stars. The icon-only ± button controls inclusion of custom categories in All Parts. Unclassified has its own tab and stays excluded. Categories shows every shelf, including excluded ones, and contains Add models.
+- The sections run left to right as All Parts, one tab per workspace, Unclassified, and Favorites. Clicking a workspace tab selects that project and shows its custom categories. Add categories and Add models are available there. The icon-only ± button controls which custom categories appear in All Parts. Unclassified stays in its own section.
 - Files, thumbnails, categories, and favorites persist in IndexedDB on the current browser origin. Clearing site data removes the library; localhost and the hosted site have independent libraries.
 - Folder import, sample-library creation, and separate JSON/CSV exports have been removed. Previously saved sample parts remain readable for compatibility.
 

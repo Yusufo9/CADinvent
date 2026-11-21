@@ -13,6 +13,7 @@ export function matchesView(part: Part, category: Category, view: string) {
   if (view === "all") return includedInAll(category);
   if (view === "favorites") return !!(part.favorite || category.favorite);
   if (view === "unclassified") return category.id === "unclassified";
+  if (view === "workspace") return category.id !== "unclassified";
   return true;
 }
 

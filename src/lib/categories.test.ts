@@ -31,6 +31,8 @@ describe("category views and deletion", () => {
       false,
     );
     expect(matchesView(part, category, "categories")).toBe(true);
+    expect(matchesView(part, category, "workspace")).toBe(false);
+    expect(matchesView(part, category, "unclassified")).toBe(true);
   });
   it("category favorites include their parts without changing individual part favorites", () => {
     const category = {

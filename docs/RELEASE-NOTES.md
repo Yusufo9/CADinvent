@@ -8,4 +8,6 @@ Includes batch STL/OBJ/PLY import, independent personal workspaces, category she
 
 Folder import, sample-library creation, and standalone JSON/CSV exports have been removed. Add models and model drag-and-drop remain available. Existing saved sample parts can still be opened/exported. All files stay in browser-local storage; keep workspace ZIP backups.
 
+The main sections now show All Parts, one tab per workspace, Unclassified, and Favorites. Workspace tabs contain the Add categories and Add models actions. The old introductory panel has been removed.
+
 Read the included START-HERE.md for launch instructions, browser storage behavior, updates, and the current unsigned-package limitations. Checksums are in SHA256SUMS.txt.

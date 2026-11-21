@@ -109,7 +109,6 @@ export default function App() {
   const busyRef = useRef(false);
   useEffect(() => {
     setQuery("");
-    setTab("all");
     setFormat("all");
     setSelected(new Set());
     setActive(undefined);
@@ -167,6 +166,7 @@ export default function App() {
       const restored = await readBackup(list, setBusy);
       setBusy("Saving restored workspace…");
       const name = await restoreWorkspace(restored.workspace, restored.files);
+      setTab("workspace");
       setNotice(
         `Workspace “${name}” restored with ${restored.workspace.parts.length} parts.`,
       );
@@ -208,7 +208,7 @@ export default function App() {
     setLibrary((l) => removeCategory(l, category.id, destination));
     setDeletingCategory(undefined);
     setSelected(new Set());
-    setTab("categories");
+    setTab("workspace");
     setNotice(
       "Category “" + category.name + "” deleted. Model files were kept.",
     );
@@ -303,7 +303,7 @@ export default function App() {
     }));
     setCategoryName("");
     setNewCategory(false);
-    setTab("categories");
+    setTab("workspace");
     setNotice(`Created ${name}.`);
   }
   async function removeSelected() {
@@ -338,6 +338,7 @@ export default function App() {
     );
   const categories = library.categories.filter((c) => {
     if (tab === "all" && !includedInAll(c)) return false;
+    if (tab === "workspace" && c.id === "unclassified") return false;
     if (tab === "unclassified" && c.id !== "unclassified") return false;
     if (
       tab === "favorites" &&
@@ -375,8 +376,14 @@ export default function App() {
           workspace={library}
           workspaces={workspaces}
           disabled={!ready || !!busy}
-          onSelect={selectWorkspace}
-          onCreate={addWorkspace}
+          onSelect={(id) => {
+            selectWorkspace(id);
+            setTab("workspace");
+          }}
+          onCreate={(name) => {
+            addWorkspace(name);
+            setTab("workspace");
+          }}
           onRename={renameWorkspace}
           onDelete={setDeletingWorkspace}
         />
@@ -488,12 +495,23 @@ export default function App() {
             >
               <Layers3 size={16} /> All parts <span>{allPartsCount}</span>
             </button>
-            <button
-              className={tab === "categories" ? "active" : ""}
-              onClick={() => setTab("categories")}
-            >
-              <FolderOpen size={16} /> Categories
-            </button>
+            {workspaces.map((workspace) => (
+              <button
+                key={workspace.id}
+                className={
+                  tab === "workspace" && workspace.id === library.id
+                    ? "active"
+                    : ""
+                }
+                onClick={() => {
+                  selectWorkspace(workspace.id);
+                  setTab("workspace");
+                }}
+                aria-label={`Open ${workspace.name}`}
+              >
+                <FolderOpen size={16} /> {workspace.name}
+              </button>
+            ))}
             <button
               className={tab === "unclassified" ? "active" : ""}
               onClick={() => setTab("unclassified")}
@@ -513,12 +531,12 @@ export default function App() {
               <Star size={16} /> Favorites
             </button>
           </div>
-          {tab === "categories" && (
+          {tab === "workspace" && (
             <button
               className="text-button"
               onClick={() => setNewCategory(true)}
             >
-              <Plus size={16} /> New category
+              <Plus size={16} /> Add categories
             </button>
           )}
         </div>
@@ -636,21 +654,24 @@ export default function App() {
                         ? "No parts in All Parts"
                         : tab === "favorites"
                           ? "No favorites yet"
-                          : "No matching categories"}
+                          : "No categories yet"}
                     </h2>
                     <p>
                       {tab === "all"
-                        ? "Include a category with its ± button in Categories."
+                        ? "Include a category with its ± button in a workspace tab."
                         : tab === "favorites"
                           ? "Star a part or category to see it here."
-                          : "Create a category to organize your models."}
+                          : "Use Add categories to organize your models."}
                     </p>
                   </div>
                 )
               : categories.map((c) => (
                   <CategoryRow
                     key={c.id}
-                    hideHeading={tab === "unclassified"}
+                    hideHeading={
+                      tab === "unclassified" ||
+                      (tab === "favorites" && c.id === "unclassified")
+                    }
                     category={c}
                     categories={library.categories}
                     parts={shown.filter((p) => p.categoryId === c.id)}
@@ -711,7 +732,7 @@ export default function App() {
                 ))}
           </>
         )}
-        {tab === "categories" && (
+        {tab === "workspace" && (
           <div
             className={`import-zone ${dragging ? "drag-over" : ""}`}
             onDragOver={(e) => {

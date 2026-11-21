@@ -314,6 +314,10 @@ h1 > span {
 .tabs {
   display: flex;
   gap: 28px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 .tabs > button {
   display: flex;
@@ -324,6 +328,8 @@ h1 > span {
   color: #8c998d;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 .tabs > button.active {
   color: var(--accent);
@@ -1535,7 +1541,6 @@ footer > span {
     flex-wrap: wrap;
   }
   .tabs {
-    flex-wrap: wrap;
     gap: 12px;
   }
   .library-toolbar {
